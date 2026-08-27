@@ -485,10 +485,10 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
                   <span>Parcela de ICMS e ISS na Guia DAS (EC 132/2023 - ADCT Arts. 125 a 133):</span>
                 </div>
                 <p className="text-slate-700 leading-relaxed font-medium">
-                  Soma de ICMS (R$ {regimeResult.das.icms.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) + ISS (R$ {regimeResult.das.iss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) = <strong className="text-amber-950">R$ {(regimeResult.das.icms + regimeResult.das.iss).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> ({regimeResult.das.totalDas > 0 ? (((regimeResult.das.icms + regimeResult.das.iss) / regimeResult.das.totalDas) * 100).toFixed(1) : 0}% da Guia DAS total).
-                  {input.simulationYear <= 2028
-                    ? ' No período de 2027 a 2028, 100% da parcela de ICMS/ISS continua calculada e recolhida dentro da guia DAS normal.'
-                    : ` No ano ${input.simulationYear}, aplica-se o fator de transição legal de redução gradual da parcela de ICMS/ISS na DAS.`}
+                  Soma de ICMS (R$ {(regimeResult.das.icms ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) + ISS (R$ {(regimeResult.das.iss ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) = <strong className="text-amber-950">R$ {((regimeResult.das.icms ?? 0) + (regimeResult.das.iss ?? 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> ({regimeResult.das.totalDas > 0 ? ((((regimeResult.das.icms ?? 0) + (regimeResult.das.iss ?? 0)) / regimeResult.das.totalDas) * 100).toFixed(1) : 0}% da Guia DAS total).
+                  {String(input.simulationYear).includes('2026') || String(input.simulationYear).includes('2027') || String(input.simulationYear).includes('2028')
+                    ? ' No período inicial (2026-2028), 100% da parcela de ICMS/ISS continua calculada e recolhida dentro da guia DAS normal.'
+                    : ` No cronograma selecionado, aplica-se o fator de transição legal da EC 132/2023 de redução gradual da parcela de ICMS/ISS na DAS.`}
                 </p>
               </div>
             </div>

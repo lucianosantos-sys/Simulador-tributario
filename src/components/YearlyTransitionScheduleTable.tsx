@@ -12,21 +12,28 @@ import {
   FileSpreadsheet,
   ArrowRight,
 } from 'lucide-react';
-import { SimulationSummary, TransitionYearDetail } from '../types/tax';
+import { SimulationSummary } from '../types/tax';
 
 interface YearlyTransitionScheduleTableProps {
   summary: SimulationSummary;
 }
 
 export const YearlyTransitionScheduleTable: React.FC<YearlyTransitionScheduleTableProps> = ({ summary }) => {
-  const { transitionSchedule, input, results } = summary;
-  const [selectedYear, setSelectedYear] = useState<number>(input.simulationYear || 2027);
+  const { transitionSchedule, input } = summary;
+  const initialYear = typeof input.simulationYear === 'string' && input.simulationYear.startsWith('20')
+    ? parseInt(input.simulationYear.slice(0, 4), 10)
+    : 2027;
+
+  const [selectedYear, setSelectedYear] = useState<number>(initialYear);
 
   if (!transitionSchedule || transitionSchedule.length === 0) {
     return null;
   }
 
   const selectedYearData = transitionSchedule.find((item) => item.year === selectedYear) || transitionSchedule[0];
+
+  const formatCurrency = (val?: number) =>
+    `R$ ${(val ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <div className="bg-white rounded-3xl border border-indigo-100 p-5 sm:p-7 shadow-sm space-y-6">
@@ -79,9 +86,9 @@ export const YearlyTransitionScheduleTable: React.FC<YearlyTransitionScheduleTab
             </h4>
           </div>
           <div className="text-right">
-            <span className="text-[11px] text-slate-300 block">Custo Tributário Estimado:</span>
+            <span className="text-[11px] text-slate-300 block">Melhor Regime Estimado:</span>
             <span className="text-base sm:text-lg font-black text-emerald-400 font-mono">
-              R$ {selectedYearData.totalMonthlyTax.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / mês ({selectedYearData.effectiveRatePct.toFixed(2)}%)
+              {selectedYearData.bestRegimeName} ({formatCurrency(selectedYearData.dasTotal)}/mês no Simples)
             </span>
           </div>
         </div>
@@ -90,17 +97,19 @@ export const YearlyTransitionScheduleTable: React.FC<YearlyTransitionScheduleTab
           <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
             <span className="text-slate-400 block text-[10px] uppercase font-bold">Parcela ICMS/ISS no DAS:</span>
             <span className="text-white font-black text-sm font-mono mt-0.5 block">
-              {(selectedYearData.icmsIssFactor * 100).toFixed(0)}%
+              {selectedYearData.icmsIssRemainingPct}%
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
-              {selectedYearData.icmsIssFactor === 1.0 ? '100% mantido na Guia DAS' : `${(selectedYearData.icmsIssFactor * 100).toFixed(0)}% no DAS / ${((1 - selectedYearData.icmsIssFactor) * 100).toFixed(0)}% IBS`}
+              {selectedYearData.icmsIssRemainingPct === 100
+                ? '100% mantido na Guia DAS'
+                : `${selectedYearData.icmsIssRemainingPct}% no DAS / ${100 - selectedYearData.icmsIssRemainingPct}% IBS`}
             </span>
           </div>
 
           <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
             <span className="text-slate-400 block text-[10px] uppercase font-bold">Alíquota CBS Federal:</span>
             <span className="text-indigo-300 font-black text-sm font-mono mt-0.5 block">
-              {selectedYearData.cbsRate.toFixed(2)}%
+              {(selectedYearData.cbsRatePct ?? 0).toFixed(2)}%
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
               {selectedYearData.year <= 2026 ? 'Alíquota teste compensável' : 'CBS definitiva'}
@@ -108,9 +117,9 @@ export const YearlyTransitionScheduleTable: React.FC<YearlyTransitionScheduleTab
           </div>
 
           <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">Alíquota IBS Estadual/Mun.:</span>
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">Alíquota IBS Subnacional:</span>
             <span className="text-amber-300 font-black text-sm font-mono mt-0.5 block">
-              {selectedYearData.ibsRate.toFixed(2)}%
+              {(selectedYearData.ibsRatePct ?? 0).toFixed(2)}%
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
               {selectedYearData.year <= 2026 ? 'Alíquota teste estadual' : selectedYearData.year <= 2028 ? '0% (ICMS/ISS no DAS)' : 'Transição progressiva'}
@@ -120,10 +129,10 @@ export const YearlyTransitionScheduleTable: React.FC<YearlyTransitionScheduleTab
           <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
             <span className="text-slate-400 block text-[10px] uppercase font-bold">Guia DAS Estimada:</span>
             <span className="text-emerald-400 font-black text-sm font-mono mt-0.5 block">
-              R$ {selectedYearData.dasEstimatedMonthly.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              {formatCurrency(selectedYearData.dasTotal)}
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
-              + R$ {selectedYearData.ibsCbsNetMonthly.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (IBS/CBS líquido)
+              ICMS/ISS no DAS: {formatCurrency(selectedYearData.dasIcmsIssAmount)}
             </span>
           </div>
         </div>
@@ -145,9 +154,9 @@ export const YearlyTransitionScheduleTable: React.FC<YearlyTransitionScheduleTab
                 <th className="p-3 text-center">Alíquota CBS</th>
                 <th className="p-3 text-center">Alíquota IBS</th>
                 <th className="p-3 text-right">Guia DAS Mensal</th>
-                <th className="p-3 text-right">IBS + CBS Líquido</th>
-                <th className="p-3 text-right">Total Impostos/mês</th>
-                <th className="p-3 text-right">Carga Efetiva</th>
+                <th className="p-3 text-right">Simples Híbrido</th>
+                <th className="p-3 text-right">Lucro Presumido</th>
+                <th className="p-3 text-right">Melhor Opção</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-indigo-50 font-mono">
@@ -174,32 +183,32 @@ export const YearlyTransitionScheduleTable: React.FC<YearlyTransitionScheduleTab
                     </td>
                     <td className="p-3 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        row.icmsIssFactor === 1.0
+                        row.icmsIssRemainingPct === 100
                           ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                          : row.icmsIssFactor > 0
+                          : row.icmsIssRemainingPct > 0
                           ? 'bg-amber-50 text-amber-800 border border-amber-200'
                           : 'bg-slate-100 text-slate-600'
                       }`}>
-                        {(row.icmsIssFactor * 100).toFixed(0)}%
+                        {row.icmsIssRemainingPct}%
                       </span>
                     </td>
                     <td className="p-3 text-center text-indigo-700">
-                      {row.cbsRate.toFixed(2)}%
+                      {(row.cbsRatePct ?? 0).toFixed(2)}%
                     </td>
                     <td className="p-3 text-center text-amber-700">
-                      {row.ibsRate.toFixed(2)}%
+                      {(row.ibsRatePct ?? 0).toFixed(2)}%
                     </td>
                     <td className="p-3 text-right font-medium">
-                      R$ {row.dasEstimatedMonthly.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {formatCurrency(row.dasTotal)}
                     </td>
-                    <td className="p-3 text-right text-indigo-800">
-                      R$ {row.ibsCbsNetMonthly.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    <td className="p-3 text-right text-emerald-700 font-bold">
+                      {formatCurrency(row.simplesHibridoTotal)}
                     </td>
-                    <td className="p-3 text-right font-black text-emerald-700">
-                      R$ {row.totalMonthlyTax.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    <td className="p-3 text-right text-slate-700">
+                      {formatCurrency(row.lucroPresumidoTotal)}
                     </td>
-                    <td className="p-3 text-right font-bold text-slate-900">
-                      {row.effectiveRatePct.toFixed(2)}%
+                    <td className="p-3 text-right font-sans font-black text-indigo-900">
+                      {row.bestRegimeName}
                     </td>
                   </tr>
                 );

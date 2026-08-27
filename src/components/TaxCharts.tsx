@@ -413,8 +413,8 @@ export const TaxCharts: React.FC<TaxChartsProps> = ({ summary }) => {
     ibsCbsPct: t.totalIvaDualRatePct,
   }));
 
-  const formatCurrency = (val: number) =>
-    `R$ ${val.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
+  const formatCurrency = (val?: number | null) =>
+    `R$ ${(Number(val) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
 
   const currentProfile = TAX_PROFILES[selectedTax];
 
