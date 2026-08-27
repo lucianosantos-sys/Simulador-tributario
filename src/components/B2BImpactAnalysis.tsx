@@ -15,6 +15,12 @@ import {
   Layers,
   HelpCircle,
   TrendingUp,
+  Package,
+  Truck,
+  Receipt,
+  Coins,
+  Wallet,
+  ArrowDownRight,
 } from 'lucide-react';
 import { CompanyInput, SimulationSummary } from '../types/tax';
 
@@ -26,6 +32,9 @@ interface B2BImpactAnalysisProps {
 export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, onChangeInput }) => {
   const { input, results } = summary;
   const [sampleInvoice, setSampleInvoice] = useState<number>(1000);
+  const [productCost, setProductCost] = useState<number>(450);
+  const [ancillaryExpenses, setAncillaryExpenses] = useState<number>(50);
+  const [freightCost, setFreightCost] = useState<number>(50);
 
   const b2bMonthlyRevenue = (input.monthlyRevenue * input.b2bPercentage) / 100;
   const b2cMonthlyRevenue = input.monthlyRevenue - b2bMonthlyRevenue;
@@ -58,22 +67,36 @@ export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, o
 
   // Simulação de Pedido / Fatura Unitária
   const sampleVal = sampleInvoice > 0 ? sampleInvoice : 1000;
+  const totalItemCost = Math.max(0, productCost) + Math.max(0, ancillaryExpenses) + Math.max(0, freightCost);
 
-  // Cenário Regular / Híbrido
+  // Alíquotas Efetivas de Impostos dos Regimes
+  const hibridoEffectiveTaxRate = input.monthlyRevenue > 0 ? (hibrido.totalMonthlyTax / input.monthlyRevenue) : (hibrido.effectiveRatePct / 100);
+  const simplificadoEffectiveTaxRate = input.monthlyRevenue > 0 ? (simplificado.totalMonthlyTax / input.monthlyRevenue) : (simplificado.effectiveRatePct / 100);
+
+  // Cenário 1: Regular / Híbrido
   const sampleRegularCredit = sampleVal * fullRateDecimal;
   const sampleRegularNetCost = sampleVal * (1 - fullRateDecimal);
+  const sampleRegularTax = sampleVal * hibridoEffectiveTaxRate;
+  const sampleRegularNetProfit = sampleVal - sampleRegularTax - totalItemCost;
+  const sampleRegularProfitMarginPct = sampleVal > 0 ? (sampleRegularNetProfit / sampleVal) * 100 : 0;
 
-  // Cenário Simplificado sem desconto
+  // Cenário 2: Simplificado sem desconto
   const sampleSimplesCredit = sampleVal * simplesCreditRateDecimal;
   const sampleSimplesNetCost = sampleVal * (1 - simplesCreditRateDecimal);
   const sampleSimplesOvercost = sampleSimplesNetCost - sampleRegularNetCost;
   const sampleSimplesOvercostPct = sampleRegularNetCost > 0 ? (sampleSimplesOvercost / sampleRegularNetCost) * 100 : 0;
+  const sampleSimplesTax = sampleVal * simplificadoEffectiveTaxRate;
+  const sampleSimplesNetProfit = sampleVal - sampleSimplesTax - totalItemCost;
+  const sampleSimplesProfitMarginPct = sampleVal > 0 ? (sampleSimplesNetProfit / sampleVal) * 100 : 0;
 
-  // Cenário Simplificado com desconto de equiparação
+  // Cenário 3: Simplificado com desconto de equiparação
   const sampleDiscountAmount = sampleVal * (requiredDiscountPct / 100);
   const sampleDiscountedPrice = sampleVal - sampleDiscountAmount;
   const sampleDiscountedCredit = sampleDiscountedPrice * simplesCreditRateDecimal;
   const sampleDiscountedNetCost = sampleDiscountedPrice - sampleDiscountedCredit;
+  const sampleDiscountedTax = sampleDiscountedPrice * simplificadoEffectiveTaxRate;
+  const sampleDiscountedNetProfit = sampleDiscountedPrice - sampleDiscountedTax - totalItemCost;
+  const sampleDiscountedProfitMarginPct = sampleDiscountedPrice > 0 ? (sampleDiscountedNetProfit / sampleDiscountedPrice) * 100 : 0;
 
   // Impacto financeiro consolidado na carteira B2B da empresa
   const monthlyB2BDiscountTotal = b2bMonthlyRevenue * (requiredDiscountPct / 100);
@@ -329,7 +352,7 @@ export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, o
       </div>
 
       {/* 4. SIMULADOR INTERATIVO DE PREÇO DE VENDA UNITÁRIO & COMPARAÇÃO DAS NOTAS FISCAIS */}
-      <div className="bg-white rounded-2xl border border-indigo-100 p-6 sm:p-7 shadow-sm space-y-5">
+      <div className="bg-white rounded-2xl border border-indigo-100 p-6 sm:p-7 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-indigo-50 pb-4">
           <div>
             <h3 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
@@ -337,26 +360,127 @@ export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, o
               Simulador de Preço de Venda da Nota Fiscal para Cliente PJ
             </h3>
             <p className="text-xs text-slate-500 font-medium">
-              Veja na prática a formação do custo de compra do cliente em cada cenário tributário.
+              Veja na prática a formação do custo de compra do cliente em cada cenário tributário e o Lucro Líquido obtido pela sua empresa.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-slate-700 whitespace-nowrap">
-              Valor da Nota / Pedido:
-            </label>
-            <div className="relative w-36 sm:w-44">
-              <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 font-bold text-xs">
-                R$
+          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 shrink-0">
+            <span className="text-[11px] font-bold text-slate-600">Custos Diretos:</span>
+            <span className="text-xs font-black text-slate-900 font-mono">
+              R$ {totalItemCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
+
+        {/* INPUTS DE FORMAÇÃO DE CUSTO & PREÇO DE VENDA */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-slate-50/60 to-white border border-indigo-100/90 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-100/70 pb-3">
+            <div className="flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-indigo-600" />
+              <span className="text-xs font-black uppercase tracking-wider text-slate-800">
+                Formação do Pedido & Estrutura de Custos
               </span>
-              <input
-                type="number"
-                min="10"
-                step="100"
-                value={sampleInvoice}
-                onChange={(e) => setSampleInvoice(Math.max(1, Number(e.target.value) || 0))}
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-900 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              />
+            </div>
+            <span className="text-xs font-bold text-indigo-700 bg-white px-2.5 py-0.5 rounded-full border border-indigo-200">
+              Total Custos: R$ {totalItemCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ({sampleVal > 0 ? ((totalItemCost / sampleVal) * 100).toFixed(1) : 0}% da nota)
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {/* Input 1: Valor da Nota / Pedido */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Receipt className="w-3.5 h-3.5 text-indigo-600" />
+                  Valor da Nota / Pedido
+                </span>
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-bold text-xs">
+                  R$
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  step="50"
+                  value={sampleInvoice}
+                  onChange={(e) => setSampleInvoice(Math.max(1, Number(e.target.value) || 0))}
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-900 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-2xs"
+                  placeholder="1000"
+                />
+              </div>
+            </div>
+
+            {/* Input 2: Custo do Produto */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Package className="w-3.5 h-3.5 text-indigo-600" />
+                  Custo do Produto (CMV)
+                </span>
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-bold text-xs">
+                  R$
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="10"
+                  value={productCost}
+                  onChange={(e) => setProductCost(Math.max(0, Number(e.target.value) || 0))}
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-900 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-2xs"
+                  placeholder="450"
+                />
+              </div>
+            </div>
+
+            {/* Input 3: Despesas Acessórias */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Coins className="w-3.5 h-3.5 text-indigo-600" />
+                  Despesas Acessórias
+                </span>
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-bold text-xs">
+                  R$
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="5"
+                  value={ancillaryExpenses}
+                  onChange={(e) => setAncillaryExpenses(Math.max(0, Number(e.target.value) || 0))}
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-900 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-2xs"
+                  placeholder="50"
+                />
+              </div>
+            </div>
+
+            {/* Input 4: Frete */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Truck className="w-3.5 h-3.5 text-indigo-600" />
+                  Frete / Logística
+                </span>
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-bold text-xs">
+                  R$
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="5"
+                  value={freightCost}
+                  onChange={(e) => setFreightCost(Math.max(0, Number(e.target.value) || 0))}
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-900 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-2xs"
+                  placeholder="50"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -364,76 +488,148 @@ export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, o
         {/* 3 Scenarios Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* CENÁRIO A: REGIME REGULAR OU SIMPLES HÍBRIDO */}
-          <div className="p-5 rounded-2xl border-2 border-emerald-500 bg-emerald-50/40 space-y-3 flex flex-col justify-between shadow-2xs">
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-600 text-white uppercase tracking-wider">
-                  Cenário 1
+          <div className="p-5 rounded-2xl border-2 border-emerald-500 bg-emerald-50/40 space-y-4 flex flex-col justify-between shadow-2xs">
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-600 text-white uppercase tracking-wider">
+                    Cenário 1
+                  </span>
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                </div>
+                <h4 className="text-sm font-black text-slate-900">
+                  Regime Regular ou Simples Híbrido
+                </h4>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Transfere 100% de crédito de IBS/CBS ({fullIbsCbsRate.toFixed(2)}%) na nota.
+                </p>
+              </div>
+
+              {/* Visão Cliente PJ */}
+              <div className="space-y-1.5 bg-white p-3 rounded-xl border border-emerald-200 text-xs font-mono">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block font-sans">
+                  Visão do Comprador PJ
                 </span>
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <div className="flex justify-between text-slate-600">
+                  <span>Preço na Nota:</span>
+                  <span className="font-bold text-slate-900">R$ {sampleVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-emerald-700 font-bold">
+                  <span>Crédito do Cliente ({fullIbsCbsRate.toFixed(2)}%):</span>
+                  <span>- R$ {sampleRegularCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="border-t border-slate-200 pt-1.5 flex justify-between text-slate-900 font-black text-xs bg-emerald-50/80 -mx-1 px-1 rounded">
+                  <span>Custo Líquido PJ:</span>
+                  <span className="text-emerald-700">R$ {sampleRegularNetCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
               </div>
-              <h4 className="text-sm font-black text-slate-900">
-                Regime Regular ou Simples Híbrido
-              </h4>
-              <p className="text-[11px] text-slate-500 font-medium">
-                Transfere 100% de crédito de IBS/CBS ({fullIbsCbsRate.toFixed(2)}%) na nota.
-              </p>
+
+              {/* Visão Vendedor (DRE & Lucro Líquido) */}
+              <div className="space-y-1.5 bg-white p-3 rounded-xl border border-emerald-200 text-xs font-mono">
+                <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider block font-sans">
+                  DRE & Lucro da Sua Empresa
+                </span>
+                <div className="flex justify-between text-slate-600">
+                  <span>Receita Faturada:</span>
+                  <span className="font-bold text-slate-900">R$ {sampleVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Impostos s/ Venda ({ (hibridoEffectiveTaxRate * 100).toFixed(1) }%):</span>
+                  <span className="text-red-600 font-bold">- R$ {sampleRegularTax.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Custos (Prod. + Desp. + Frete):</span>
+                  <span className="text-red-600 font-bold">- R$ {totalItemCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="border-t border-emerald-300 pt-1.5 flex justify-between items-center bg-emerald-100/70 -mx-1 px-2 rounded-lg py-1">
+                  <span className="font-black text-slate-900 text-xs font-sans">Lucro Líquido:</span>
+                  <div className="text-right">
+                    <span className="font-black text-emerald-800 text-sm block">
+                      R$ {sampleRegularNetProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-700">
+                      Margem: {sampleRegularProfitMarginPct.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2 bg-white p-3.5 rounded-xl border border-emerald-200 text-xs font-mono">
-              <div className="flex justify-between text-slate-600">
-                <span>Preço na Nota:</span>
-                <span className="font-bold text-slate-900">R$ {sampleVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="flex justify-between text-emerald-700 font-bold">
-                <span>Crédito do Cliente ({fullIbsCbsRate.toFixed(2)}%):</span>
-                <span>- R$ {sampleRegularCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="border-t border-slate-200 pt-1.5 flex justify-between text-slate-900 font-black text-sm bg-emerald-50/80 -mx-1 px-1 rounded">
-                <span>Custo Líquido PJ:</span>
-                <span className="text-emerald-700">R$ {sampleRegularNetCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-              </div>
-            </div>
-
-            <div className="text-[11px] text-emerald-800 font-bold flex items-center gap-1">
+            <div className="text-[11px] text-emerald-800 font-bold flex items-center gap-1 pt-1 border-t border-emerald-200">
               <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
               100% de competitividade comercial.
             </div>
           </div>
 
           {/* CENÁRIO B: SIMPLES SIMPLIFICADO SEM DESCONTO */}
-          <div className="p-5 rounded-2xl border-2 border-amber-300 bg-amber-50/40 space-y-3 flex flex-col justify-between shadow-2xs">
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-600 text-white uppercase tracking-wider">
-                  Cenário 2
+          <div className="p-5 rounded-2xl border-2 border-amber-300 bg-amber-50/40 space-y-4 flex flex-col justify-between shadow-2xs">
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-600 text-white uppercase tracking-wider">
+                    Cenário 2
+                  </span>
+                  <AlertOctagon className="w-4 h-4 text-amber-600" />
+                </div>
+                <h4 className="text-sm font-black text-slate-900">
+                  Simples Simplificado (Sem Desconto)
+                </h4>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Preço normal com crédito restrito da guia DAS ({simplesCreditRatePct.toFixed(2)}%).
+                </p>
+              </div>
+
+              {/* Visão Cliente PJ */}
+              <div className="space-y-1.5 bg-white p-3 rounded-xl border border-amber-200 text-xs font-mono">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block font-sans">
+                  Visão do Comprador PJ
                 </span>
-                <AlertOctagon className="w-4 h-4 text-amber-600" />
+                <div className="flex justify-between text-slate-600">
+                  <span>Preço na Nota:</span>
+                  <span className="font-bold text-slate-900">R$ {sampleVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-amber-700 font-bold">
+                  <span>Crédito do Cliente ({simplesCreditRatePct.toFixed(2)}%):</span>
+                  <span>- R$ {sampleSimplesCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="border-t border-slate-200 pt-1.5 flex justify-between text-slate-900 font-black text-xs bg-amber-100/70 -mx-1 px-1 rounded">
+                  <span>Custo Líquido PJ:</span>
+                  <span className="text-amber-800">R$ {sampleSimplesNetCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
               </div>
-              <h4 className="text-sm font-black text-slate-900">
-                Simples Simplificado (Sem Desconto)
-              </h4>
-              <p className="text-[11px] text-slate-500 font-medium">
-                Preço normal com crédito restrito da guia DAS ({simplesCreditRatePct.toFixed(2)}%).
-              </p>
+
+              {/* Visão Vendedor (DRE & Lucro Líquido) */}
+              <div className="space-y-1.5 bg-white p-3 rounded-xl border border-amber-200 text-xs font-mono">
+                <span className="text-[10px] font-black text-amber-800 uppercase tracking-wider block font-sans">
+                  DRE & Lucro da Sua Empresa
+                </span>
+                <div className="flex justify-between text-slate-600">
+                  <span>Receita Faturada:</span>
+                  <span className="font-bold text-slate-900">R$ {sampleVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Imposto DAS ({ (simplificadoEffectiveTaxRate * 100).toFixed(1) }%):</span>
+                  <span className="text-red-600 font-bold">- R$ {sampleSimplesTax.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Custos (Prod. + Desp. + Frete):</span>
+                  <span className="text-red-600 font-bold">- R$ {totalItemCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="border-t border-amber-300 pt-1.5 flex justify-between items-center bg-amber-100/70 -mx-1 px-2 rounded-lg py-1">
+                  <span className="font-black text-slate-900 text-xs font-sans">Lucro Líquido:</span>
+                  <div className="text-right">
+                    <span className="font-black text-amber-800 text-sm block">
+                      R$ {sampleSimplesNetProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-[10px] font-bold text-amber-700">
+                      Margem: {sampleSimplesProfitMarginPct.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2 bg-white p-3.5 rounded-xl border border-amber-200 text-xs font-mono">
-              <div className="flex justify-between text-slate-600">
-                <span>Preço na Nota:</span>
-                <span className="font-bold text-slate-900">R$ {sampleVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="flex justify-between text-amber-700 font-bold">
-                <span>Crédito do Cliente ({simplesCreditRatePct.toFixed(2)}%):</span>
-                <span>- R$ {sampleSimplesCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="border-t border-slate-200 pt-1.5 flex justify-between text-slate-900 font-black text-sm bg-amber-100/70 -mx-1 px-1 rounded">
-                <span>Custo Líquido PJ:</span>
-                <span className="text-amber-800">R$ {sampleSimplesNetCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-              </div>
-            </div>
-
-            <div className="text-[11px] text-amber-800 font-bold space-y-0.5">
+            <div className="text-[11px] text-amber-800 font-bold space-y-0.5 pt-1 border-t border-amber-200">
               <div className="flex items-center gap-1 text-red-600">
                 <TrendingDown className="w-3.5 h-3.5 shrink-0" />
                 <span>+R$ {sampleSimplesOvercost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} mais caro (+{sampleSimplesOvercostPct.toFixed(1)}%)</span>
@@ -445,38 +641,74 @@ export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, o
           </div>
 
           {/* CENÁRIO C: SIMPLES SIMPLIFICADO COM DESCONTO DE EQUIPARAÇÃO */}
-          <div className="p-5 rounded-2xl border-2 border-indigo-500 bg-indigo-50/40 space-y-3 flex flex-col justify-between shadow-2xs">
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-indigo-600 text-white uppercase tracking-wider">
-                  Cenário 3
+          <div className="p-5 rounded-2xl border-2 border-indigo-500 bg-indigo-50/40 space-y-4 flex flex-col justify-between shadow-2xs">
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-indigo-600 text-white uppercase tracking-wider">
+                    Cenário 3
+                  </span>
+                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                </div>
+                <h4 className="text-sm font-black text-slate-900">
+                  Simples Simplificado c/ Desconto ({requiredDiscountPct.toFixed(1)}%)
+                </h4>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Desconto concedido para neutralizar o custo do comprador.
+                </p>
+              </div>
+
+              {/* Visão Cliente PJ */}
+              <div className="space-y-1.5 bg-white p-3 rounded-xl border border-indigo-200 text-xs font-mono">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block font-sans">
+                  Visão do Comprador PJ
                 </span>
-                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <div className="flex justify-between text-slate-600">
+                  <span>Preço c/ Desconto:</span>
+                  <span className="font-bold text-indigo-900">R$ {sampleDiscountedPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-indigo-700 font-bold">
+                  <span>Crédito na DAS ({simplesCreditRatePct.toFixed(2)}%):</span>
+                  <span>- R$ {sampleDiscountedCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="border-t border-slate-200 pt-1.5 flex justify-between text-slate-900 font-black text-xs bg-indigo-100/70 -mx-1 px-1 rounded">
+                  <span>Custo Líquido PJ:</span>
+                  <span className="text-indigo-950">R$ {sampleDiscountedNetCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
               </div>
-              <h4 className="text-sm font-black text-slate-900">
-                Simples Simplificado c/ Desconto ({requiredDiscountPct.toFixed(1)}%)
-              </h4>
-              <p className="text-[11px] text-slate-500 font-medium">
-                Desconto concedido para neutralizar o custo do comprador.
-              </p>
+
+              {/* Visão Vendedor (DRE & Lucro Líquido) */}
+              <div className="space-y-1.5 bg-white p-3 rounded-xl border border-indigo-200 text-xs font-mono">
+                <span className="text-[10px] font-black text-indigo-900 uppercase tracking-wider block font-sans">
+                  DRE & Lucro da Sua Empresa
+                </span>
+                <div className="flex justify-between text-slate-600">
+                  <span>Receita Faturada:</span>
+                  <span className="font-bold text-indigo-900">R$ {sampleDiscountedPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Imposto DAS ({ (simplificadoEffectiveTaxRate * 100).toFixed(1) }%):</span>
+                  <span className="text-red-600 font-bold">- R$ {sampleDiscountedTax.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Custos (Prod. + Desp. + Frete):</span>
+                  <span className="text-red-600 font-bold">- R$ {totalItemCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="border-t border-indigo-300 pt-1.5 flex justify-between items-center bg-indigo-100/70 -mx-1 px-2 rounded-lg py-1">
+                  <span className="font-black text-slate-900 text-xs font-sans">Lucro Líquido:</span>
+                  <div className="text-right">
+                    <span className={`font-black text-sm block ${sampleDiscountedNetProfit >= 0 ? 'text-indigo-950' : 'text-red-600'}`}>
+                      R$ {sampleDiscountedNetProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className={`text-[10px] font-bold ${sampleDiscountedProfitMarginPct >= 0 ? 'text-indigo-700' : 'text-red-600'}`}>
+                      Margem: {sampleDiscountedProfitMarginPct.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2 bg-white p-3.5 rounded-xl border border-indigo-200 text-xs font-mono">
-              <div className="flex justify-between text-slate-600">
-                <span>Preço c/ Desconto:</span>
-                <span className="font-bold text-indigo-900">R$ {sampleDiscountedPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="flex justify-between text-indigo-700 font-bold">
-                <span>Crédito na DAS ({simplesCreditRatePct.toFixed(2)}%):</span>
-                <span>- R$ {sampleDiscountedCredit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="border-t border-slate-200 pt-1.5 flex justify-between text-slate-900 font-black text-sm bg-indigo-100/70 -mx-1 px-1 rounded">
-                <span>Custo Líquido PJ:</span>
-                <span className="text-indigo-950">R$ {sampleDiscountedNetCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-              </div>
-            </div>
-
-            <div className="text-[11px] text-indigo-950 font-bold space-y-0.5">
+            <div className="text-[11px] text-indigo-950 font-bold space-y-0.5 pt-1 border-t border-indigo-200">
               <span className="text-emerald-700 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 Custo do cliente equiparado ao Regime Regular!

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Store,
   Factory,
@@ -54,6 +54,40 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
   onPrint,
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const wizardContainerRef = useRef<HTMLDivElement>(null);
+  const isFirstMount = useRef(true);
+
+  const scrollToStepStart = () => {
+    if (wizardContainerRef.current) {
+      const navbarHeight = 85;
+      const elementPosition = wizardContainerRef.current.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - navbarHeight;
+
+      window.scrollTo({
+        top: Math.max(0, offsetPosition),
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  const goToStep = (step: 1 | 2 | 3 | 4) => {
+    setCurrentStep(step);
+    // Immediate scroll assist
+    setTimeout(() => {
+      scrollToStepStart();
+    }, 30);
+  };
+
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      scrollToStepStart();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [currentStep]);
 
   const totalPayroll = input.monthlyPayroll + input.monthlyProLabore;
   const operationalCosts = totalPayroll + input.monthlyPurchasesInputs;
@@ -66,7 +100,7 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
   const considerB2BCompetitiveFactor = summary?.considerB2BCompetitiveFactor ?? (input.considerB2BCompetitiveFactor !== false);
 
   return (
-    <div className="bg-white rounded-3xl border border-indigo-100 shadow-sm p-5 sm:p-8 space-y-6">
+    <div ref={wizardContainerRef} id="wizard-simulator-container" className="bg-white rounded-3xl border border-indigo-100 shadow-sm p-5 sm:p-8 space-y-6">
       {/* Top Bar with New Analysis Quick Action & Progress */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-indigo-50 pb-5">
         <div>
@@ -117,7 +151,7 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
               <button
                 key={item.step}
                 type="button"
-                onClick={() => setCurrentStep(item.step as 1 | 2 | 3 | 4)}
+                onClick={() => goToStep(item.step as 1 | 2 | 3 | 4)}
                 className={`flex flex-col items-center text-center p-2.5 rounded-2xl transition-all cursor-pointer border ${
                   isActive
                     ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100 ring-2 ring-indigo-200'
@@ -180,7 +214,7 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
             </span>
             <button
               id="wizard-step1-next"
-              onClick={() => setCurrentStep(2)}
+              onClick={() => goToStep(2)}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-bold transition-all shadow-md shadow-emerald-100 cursor-pointer"
             >
               Continuar para Finanças
@@ -218,7 +252,7 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
                   </span>
                   <button
                     type="button"
-                    onClick={() => setCurrentStep(1)}
+                    onClick={() => goToStep(1)}
                     className="text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-white px-3 py-1 rounded-full border border-indigo-200 cursor-pointer shadow-2xs"
                   >
                     Ajustar no Passo 1
@@ -414,7 +448,7 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
           <div className="flex justify-between pt-4 border-t border-slate-100">
             <button
               id="wizard-step2-prev"
-              onClick={() => setCurrentStep(1)}
+              onClick={() => goToStep(1)}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs sm:text-sm font-bold hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -422,7 +456,7 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
             </button>
             <button
               id="wizard-step2-next"
-              onClick={() => setCurrentStep(3)}
+              onClick={() => goToStep(3)}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-bold transition-all shadow-md shadow-emerald-100 cursor-pointer"
             >
               Continuar para Benefícios & Segregação
@@ -470,7 +504,7 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
           <div className="flex justify-between pt-4 border-t border-slate-100">
             <button
               id="wizard-step3-prev"
-              onClick={() => setCurrentStep(2)}
+              onClick={() => goToStep(2)}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs sm:text-sm font-bold hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -478,7 +512,7 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
             </button>
             <button
               id="wizard-step3-next"
-              onClick={() => setCurrentStep(4)}
+              onClick={() => goToStep(4)}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-bold transition-all shadow-md shadow-emerald-100 cursor-pointer"
             >
               Continuar para Perfil de Clientes
@@ -681,7 +715,7 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
           <div className="flex justify-between pt-4 border-t border-slate-100">
             <button
               id="wizard-step4-prev"
-              onClick={() => setCurrentStep(3)}
+              onClick={() => goToStep(3)}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs sm:text-sm font-bold hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
