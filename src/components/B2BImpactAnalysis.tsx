@@ -32,9 +32,9 @@ interface B2BImpactAnalysisProps {
 export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, onChangeInput }) => {
   const { input, results } = summary;
   const [sampleInvoice, setSampleInvoice] = useState<number>(1000);
-  const [productCost, setProductCost] = useState<number>(450);
-  const [ancillaryExpenses, setAncillaryExpenses] = useState<number>(50);
-  const [freightCost, setFreightCost] = useState<number>(50);
+  const [productCost, setProductCost] = useState<number>(input.productCostMonthly ? Math.round(input.productCostMonthly / Math.max(1, input.monthlyRevenue / 1000)) : 450);
+  const [ancillaryExpenses, setAncillaryExpenses] = useState<number>(input.accessoryExpensesMonthly ? Math.round(input.accessoryExpensesMonthly / Math.max(1, input.monthlyRevenue / 1000)) : 50);
+  const [freightCost, setFreightCost] = useState<number>(input.freightExpensesMonthly ? Math.round(input.freightExpensesMonthly / Math.max(1, input.monthlyRevenue / 1000)) : 50);
   const [customDiscountPct, setCustomDiscountPct] = useState<number | null>(null);
 
   const b2bMonthlyRevenue = (input.monthlyRevenue * input.b2bPercentage) / 100;

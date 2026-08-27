@@ -10,9 +10,205 @@ import {
   SegregationSavings,
   SimplesEnquadramento,
   SimulationSummary,
+  SimulationYear,
   TaxSubstitutionRow,
+  TransitionYearDetail,
 } from '../types/tax';
 import { ANEXO_TABLES } from '../data/taxTables';
+
+/**
+ * Fatores da Transição Constitucional da Reforma Tributária (EC 132/2023 Arts. 125 a 133 ADCT)
+ * Regras cruciais:
+ * 1. 2026: Ano de Teste (CBS 0,9% e IBS 0,1% compensáveis). ICMS e ISS permanecem 100% no DAS.
+ * 2. 2027-2028: PIS/COFINS extintos e substituídos pela CBS. ICMS e ISS continuam 100% integrais na guia DAS!
+ * 3. 2029-2032: Redução anual de 1/10 (10%) de ICMS e ISS no DAS com introdução gradual do IBS (10%, 20%, 30%, 40%).
+ * 4. 2033+: Extinção total de ICMS e ISS (0% no DAS) e vigência plena do IVA Dual (IBS 17,7% + CBS 8,8%).
+ */
+export function getTransitionYearFactors(
+  simulationYear: SimulationYear,
+  customParams?: {
+    cbsRate2027?: number;
+    ibsRate2027?: number;
+    fullCbsIbsRate?: number;
+    useCustomIbsCbsRate?: boolean;
+    customCbsRatePct?: number;
+    customIbsRatePct?: number;
+  }
+) {
+  const fullRate = customParams?.fullCbsIbsRate || 26.5;
+  const fullCbs = fullRate * 0.35; // ~8.8%
+  const fullIbs = fullRate * 0.65; // ~17.7%
+
+  if (customParams?.useCustomIbsCbsRate) {
+    const cbs = customParams.customCbsRatePct ?? fullCbs;
+    const ibs = customParams.customIbsRatePct ?? fullIbs;
+    return {
+      yearNumber: 2027,
+      simulationYearKey: 'personalizado' as SimulationYear,
+      icmsIssRemainingFactor: 1.0,
+      icmsIssRemainingPct: 100,
+      ibsTransitionFactor: 0.01,
+      cbsRatePct: cbs,
+      ibsRatePct: ibs,
+      totalIvaDualRatePct: cbs + ibs,
+      pisCofinsActiveInDas: false,
+      label: 'Alíquotas Personalizadas',
+      phase: 'Simulação com Parâmetros Customizados',
+      statusBadge: `CBS ${cbs.toFixed(1)}% + IBS ${ibs.toFixed(1)}% Customizado`,
+      badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
+      legalBasis: 'Configuração manual de alíquotas do usuário',
+      notes: 'Cenário parametrizado manualmente para análises de sensibilidade ou regimes diferenciados.',
+    };
+  }
+
+  switch (simulationYear) {
+    case '2026_teste':
+      return {
+        yearNumber: 2026,
+        simulationYearKey: '2026_teste' as SimulationYear,
+        icmsIssRemainingFactor: 1.0, // 100% de ICMS e ISS no DAS
+        icmsIssRemainingPct: 100,
+        ibsTransitionFactor: 0.0,
+        cbsRatePct: 0.9,
+        ibsRatePct: 0.1,
+        totalIvaDualRatePct: 1.0,
+        pisCofinsActiveInDas: true, // PIS e COFINS integrais no DAS
+        label: '2026 (Ano de Teste)',
+        phase: 'Fase de Teste Operacional',
+        statusBadge: 'CBS 0,9% + IBS 0,1% • ICMS/ISS 100% no DAS',
+        badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
+        legalBasis: 'Art. 125 do ADCT da CF/88 (EC 132/2023)',
+        notes: 'Ano piloto com alíquota teste de 0,9% CBS e 0,1% IBS compensáveis. ICMS e ISS permanecem 100% vigentes na guia DAS.',
+      };
+    case '2027_transicao':
+      return {
+        yearNumber: 2027,
+        simulationYearKey: '2027_transicao' as SimulationYear,
+        icmsIssRemainingFactor: 1.0, // 100% de ICMS e ISS no DAS
+        icmsIssRemainingPct: 100,
+        ibsTransitionFactor: 0.01,
+        cbsRatePct: customParams?.cbsRate2027 ?? 0.9,
+        ibsRatePct: customParams?.ibsRate2027 ?? 0.1,
+        totalIvaDualRatePct: (customParams?.cbsRate2027 ?? 0.9) + (customParams?.ibsRate2027 ?? 0.1),
+        pisCofinsActiveInDas: false, // PIS e COFINS extintos
+        label: '2027 (Transição CBS)',
+        phase: 'Início da Reforma e Extinção do PIS/COFINS',
+        statusBadge: 'CBS Vigente • ICMS/ISS 100% na Guia DAS (Maior Parcela)',
+        badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+        legalBasis: 'Art. 128 do ADCT da CF/88 (EC 132/2023) e LC 214/2025',
+        notes: 'PIS e COFINS federais são extintos e substituídos pela CBS. ICMS e ISS continuam 100% mantidos e calculados na guia do DAS, correspondendo a mais de 32% a 44,5% do total do DAS.',
+      };
+    case '2028_transicao':
+      return {
+        yearNumber: 2028,
+        simulationYearKey: '2028_transicao' as SimulationYear,
+        icmsIssRemainingFactor: 1.0, // 100% de ICMS e ISS no DAS
+        icmsIssRemainingPct: 100,
+        ibsTransitionFactor: 0.01,
+        cbsRatePct: fullCbs, // ~8.8%
+        ibsRatePct: 0.1,
+        totalIvaDualRatePct: fullCbs + 0.1,
+        pisCofinsActiveInDas: false,
+        label: '2028 (CBS Plena / ICMS e ISS 100%)',
+        phase: 'Consolidação da CBS Federal',
+        statusBadge: 'CBS Plena 8,8% • ICMS/ISS 100% no DAS',
+        badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+        legalBasis: 'Art. 129 do ADCT da CF/88 (EC 132/2023)',
+        notes: 'CBS federal em alíquota plena. ICMS e ISS continuam 100% calculados dentro da guia unificada do DAS.',
+      };
+    case '2029_transicao':
+      return {
+        yearNumber: 2029,
+        simulationYearKey: '2029_transicao' as SimulationYear,
+        icmsIssRemainingFactor: 0.9, // 90% (redução de 1/10)
+        icmsIssRemainingPct: 90,
+        ibsTransitionFactor: 0.1, // 10% do IBS
+        cbsRatePct: fullCbs,
+        ibsRatePct: fullIbs * 0.1, // ~1.77%
+        totalIvaDualRatePct: fullCbs + (fullIbs * 0.1),
+        pisCofinsActiveInDas: false,
+        label: '2029 (Transição IBS - 90% ICMS/ISS)',
+        phase: 'Início da Transição do IBS Subnacional (1/10)',
+        statusBadge: 'IBS 10% • ICMS/ISS reduzido a 90% na Guia DAS',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        legalBasis: 'Art. 130 do ADCT da CF/88 (EC 132/2023)',
+        notes: 'Redução gradual de 10% nas alíquotas de ICMS e ISS dentro do DAS. Início da arrecadação de 10% do IBS subnacional.',
+      };
+    case '2030_transicao':
+      return {
+        yearNumber: 2030,
+        simulationYearKey: '2030_transicao' as SimulationYear,
+        icmsIssRemainingFactor: 0.8, // 80% (redução de 2/10)
+        icmsIssRemainingPct: 80,
+        ibsTransitionFactor: 0.2, // 20% do IBS
+        cbsRatePct: fullCbs,
+        ibsRatePct: fullIbs * 0.2, // ~3.54%
+        totalIvaDualRatePct: fullCbs + (fullIbs * 0.2),
+        pisCofinsActiveInDas: false,
+        label: '2030 (Transição IBS - 80% ICMS/ISS)',
+        phase: 'Fase de Transição Subnacional (2/10)',
+        statusBadge: 'IBS 20% • ICMS/ISS reduzido a 80% na Guia DAS',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        legalBasis: 'Art. 130 do ADCT da CF/88 (EC 132/2023)',
+        notes: 'Redução de 20% nas alíquotas de ICMS e ISS do DAS. Entrada de 20% da alíquota plena do IBS.',
+      };
+    case '2031_transicao':
+      return {
+        yearNumber: 2031,
+        simulationYearKey: '2031_transicao' as SimulationYear,
+        icmsIssRemainingFactor: 0.7, // 70% (redução de 3/10)
+        icmsIssRemainingPct: 70,
+        ibsTransitionFactor: 0.3, // 30% do IBS
+        cbsRatePct: fullCbs,
+        ibsRatePct: fullIbs * 0.3, // ~5.31%
+        totalIvaDualRatePct: fullCbs + (fullIbs * 0.3),
+        pisCofinsActiveInDas: false,
+        label: '2031 (Transição IBS - 70% ICMS/ISS)',
+        phase: 'Fase de Transição Subnacional (3/10)',
+        statusBadge: 'IBS 30% • ICMS/ISS reduzido a 70% na Guia DAS',
+        badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+        legalBasis: 'Art. 130 do ADCT da CF/88 (EC 132/2023)',
+        notes: 'Redução de 30% nas alíquotas de ICMS e ISS no DAS. Entrada de 30% do IBS.',
+      };
+    case '2032_transicao':
+      return {
+        yearNumber: 2032,
+        simulationYearKey: '2032_transicao' as SimulationYear,
+        icmsIssRemainingFactor: 0.6, // 60% (redução de 4/10)
+        icmsIssRemainingPct: 60,
+        ibsTransitionFactor: 0.4, // 40% do IBS
+        cbsRatePct: fullCbs,
+        ibsRatePct: fullIbs * 0.4, // ~7.08%
+        totalIvaDualRatePct: fullCbs + (fullIbs * 0.4),
+        pisCofinsActiveInDas: false,
+        label: '2032 (Transição IBS - 60% ICMS/ISS)',
+        phase: 'Último Ano de Vigência de ICMS e ISS',
+        statusBadge: 'IBS 40% • ICMS/ISS a 60% (Último ano no DAS)',
+        badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+        legalBasis: 'Art. 130 do ADCT da CF/88 (EC 132/2023)',
+        notes: 'Último ano com ICMS e ISS na guia do DAS (reduzidos a 60%). A partir de 2033, ambos são 100% extintos.',
+      };
+    case '2033_pleno':
+    default:
+      return {
+        yearNumber: 2033,
+        simulationYearKey: '2033_pleno' as SimulationYear,
+        icmsIssRemainingFactor: 0.0, // 0% de ICMS e ISS (extintos)
+        icmsIssRemainingPct: 0,
+        ibsTransitionFactor: 1.0, // 100% do IBS
+        cbsRatePct: fullCbs, // ~8.8%
+        ibsRatePct: fullIbs, // ~17.7%
+        totalIvaDualRatePct: fullRate, // 26.5%
+        pisCofinsActiveInDas: false,
+        label: '2033 (Vigência Plena)',
+        phase: 'Modelo Definitivo de IVA Dual Pleno',
+        statusBadge: 'Extinção Total de ICMS/ISS • IBS 17,7% e CBS 8,8%',
+        badgeColor: 'bg-slate-900 text-white border-slate-700',
+        legalBasis: 'Art. 133 do ADCT da CF/88 (EC 132/2023)',
+        notes: 'Extinção total e definitiva de ICMS, ISS, PIS, COFINS e IPI. Entrada integral do IBS (17,7%) e CBS (8,8%).',
+      };
+  }
+}
 
 export function calculateFatorR(monthlyRevenue: number, monthlyPayroll: number, monthlyProLabore: number, rbt12: number) {
   const totalMonthlyPayroll = monthlyPayroll + monthlyProLabore;
@@ -213,7 +409,93 @@ export function getBracketAndEffectiveRate(rbt12: number, anexo: AnexoType) {
   };
 }
 
-export function runFullTaxSimulation(input: CompanyInput): SimulationSummary {
+export function calculateYearlyTransitionSchedule(input: CompanyInput): TransitionYearDetail[] {
+  const years: SimulationYear[] = [
+    '2026_teste',
+    '2027_transicao',
+    '2028_transicao',
+    '2029_transicao',
+    '2030_transicao',
+    '2031_transicao',
+    '2032_transicao',
+    '2033_pleno',
+  ];
+
+  return years.map((yearKey) => {
+    const factors = getTransitionYearFactors(yearKey, {
+      cbsRate2027: input.cbsRate2027,
+      ibsRate2027: input.ibsRate2027,
+      fullCbsIbsRate: input.fullCbsIbsRate,
+      useCustomIbsCbsRate: false,
+    });
+
+    const sim = runFullTaxSimulation(
+      {
+        ...input,
+        simulationYear: yearKey,
+        useCustomIbsCbsRate: false,
+      },
+      true
+    );
+
+    const dasBreakdown = sim.results.simples_simplificado.das;
+    const directSimplificado = sim.results.simples_simplificado.totalMonthlyTax;
+    const hibridoTotal = sim.results.simples_hibrido.totalMonthlyTax;
+    const presumidoTotal = sim.results.lucro_presumido.totalMonthlyTax;
+    const realTotal = sim.results.lucro_real.totalMonthlyTax;
+
+    const monthlyValues = [
+      { regime: 'simples_simplificado' as RegimeType, name: 'Simples Nacional Simplificado', cost: directSimplificado },
+      { regime: 'simples_hibrido' as RegimeType, name: 'Simples Nacional Híbrido', cost: hibridoTotal },
+      { regime: 'lucro_presumido' as RegimeType, name: 'Lucro Presumido', cost: presumidoTotal },
+      { regime: 'lucro_real' as RegimeType, name: 'Lucro Real', cost: realTotal },
+    ];
+
+    const eligible = sim.enquadramento.isEligibleForSimples
+      ? monthlyValues
+      : monthlyValues.filter((m) => m.regime === 'lucro_presumido' || m.regime === 'lucro_real');
+
+    eligible.sort((a, b) => a.cost - b.cost);
+    const best = eligible[0];
+    const worst = eligible[eligible.length - 1];
+    const annualSavings = Math.max(0, (worst.cost - best.cost) * 12);
+
+    const dasIcmsIssAmount = (dasBreakdown.icms || 0) + (dasBreakdown.iss || 0);
+    const dasFederalDirectAmount = (dasBreakdown.irpj || 0) + (dasBreakdown.csll || 0) + (dasBreakdown.cpp || 0);
+    const dasPisCofinsOrCbs = (dasBreakdown.pis || 0) + (dasBreakdown.cofins || 0);
+
+    return {
+      year: factors.yearNumber,
+      simulationYearKey: yearKey,
+      label: factors.label,
+      phase: factors.phase,
+      statusBadge: factors.statusBadge,
+      badgeColor: factors.badgeColor,
+      legalBasis: factors.legalBasis,
+      notes: factors.notes,
+      icmsIssRemainingPct: factors.icmsIssRemainingPct,
+      icmsIssRemainingFactor: factors.icmsIssRemainingFactor,
+      ibsTransitionFactor: factors.ibsTransitionFactor,
+      cbsRatePct: factors.cbsRatePct,
+      ibsRatePct: factors.ibsRatePct,
+      totalIvaDualRatePct: factors.totalIvaDualRatePct,
+      pisCofinsActiveInDas: factors.pisCofinsActiveInDas,
+      dasTotal: dasBreakdown.totalDas,
+      dasIcmsIssAmount,
+      dasIcmsIssSharePct: dasBreakdown.totalDas > 0 ? (dasIcmsIssAmount / dasBreakdown.totalDas) * 100 : 0,
+      dasFederalShareAmount: dasFederalDirectAmount,
+      dasPisCofinsOrCbsAmount: dasPisCofinsOrCbs,
+      simplesHibridoTotal: hibridoTotal,
+      lucroPresumidoTotal: presumidoTotal,
+      lucroRealTotal: realTotal,
+      bestRegime: best.regime,
+      bestRegimeName: best.name,
+      annualSavingsVsWorst: annualSavings,
+    };
+  });
+}
+
+export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false): SimulationSummary {
   const {
     monthlyRevenue,
     rbt12,
@@ -261,22 +543,19 @@ export function runFullTaxSimulation(input: CompanyInput): SimulationSummary {
 
   const { bracket, effectiveRate: simplesEffectiveRate } = getBracketAndEffectiveRate(rbt12, effectiveAnexo);
 
-  // Determinação das Alíquotas de CBS e IBS (Sugeridas vs Personalizadas)
-  let rawCbsRate = 0;
-  let rawIbsRate = 0;
+  // Determinação das Alíquotas e Fatores de Transição de CBS, IBS, ICMS e ISS (EC 132/2023)
+  const transitionFactors = getTransitionYearFactors(simulationYear, {
+    cbsRate2027,
+    ibsRate2027,
+    fullCbsIbsRate,
+    useCustomIbsCbsRate,
+    customCbsRatePct,
+    customIbsRatePct,
+  });
 
-  if (useCustomIbsCbsRate) {
-    rawCbsRate = (customCbsRatePct || 0) / 100;
-    rawIbsRate = (customIbsRatePct || 0) / 100;
-  } else if (simulationYear === '2027_transicao') {
-    rawCbsRate = (cbsRate2027 || 0.9) / 100;
-    rawIbsRate = (ibsRate2027 || 0.1) / 100;
-  } else {
-    // Alíquota Plena 2033 (Padrão 26.5% - CBS 8.8% + IBS 17.7%)
-    const fullRate = fullCbsIbsRate || 26.5;
-    rawCbsRate = (fullRate * 0.35) / 100;
-    rawIbsRate = (fullRate * 0.65) / 100;
-  }
+  const rawCbsRate = transitionFactors.cbsRatePct / 100;
+  const rawIbsRate = transitionFactors.ibsRatePct / 100;
+  const icmsIssTransitionFactor = transitionFactors.icmsIssRemainingFactor; // 1.0 (2026-28), 0.9 (2029) ... 0.0 (2033)
 
   // Redução de alíquota do IVA Dual para o setor de Saúde / Medicamentos (Farmácias) - Art. 9º EC 132/2023
   let healthReductionFactor = 1.0;
@@ -529,6 +808,7 @@ export function runFullTaxSimulation(input: CompanyInput): SimulationSummary {
   let finalCofins = 0;
   let finalIcms = 0;
   let finalIss = 0;
+  let finalIbsInDas = 0;
   let finalIpi = 0;
   let totalDeductedPisCofins = 0;
   let deductedIcms = 0;
@@ -551,10 +831,17 @@ export function runFullTaxSimulation(input: CompanyInput): SimulationSummary {
     finalCofins += (cofinsTheo - cofinsDed);
     totalDeductedPisCofins += (pisDed + cofinsDed);
 
-    const icmsTheo = gDas * (rateInfo1.bracket.icmsShare || 0);
+    // ICMS no DAS é a maior fatia (~34%). Na transição, aplica-se o fator residual do ICMS (Art. 130 ADCT)
+    const icmsTheo = gDas * (rateInfo1.bracket.icmsShare || 0) * icmsIssTransitionFactor;
     const icmsDed = icmsTheo * icmsStRatio;
     finalIcms += (icmsTheo - icmsDed);
     deductedIcms += icmsDed;
+
+    // Parcela de IBS no DAS correspondente à transição gradual
+    if (icmsIssTransitionFactor < 1.0) {
+      const ibsShareInDas = gDas * (rateInfo1.bracket.icmsShare || 0) * (1 - icmsIssTransitionFactor);
+      finalIbsInDas += ibsShareInDas;
+    }
   }
 
   // 2. Anexo II - Indústria
@@ -574,10 +861,15 @@ export function runFullTaxSimulation(input: CompanyInput): SimulationSummary {
     finalCofins += (cofinsTheo - cofinsDed);
     totalDeductedPisCofins += (pisDed + cofinsDed);
 
-    const icmsTheo = gDas * (rateInfo2.bracket.icmsShare || 0);
+    const icmsTheo = gDas * (rateInfo2.bracket.icmsShare || 0) * icmsIssTransitionFactor;
     const icmsDed = icmsTheo * icmsStRatio;
     finalIcms += (icmsTheo - icmsDed);
     deductedIcms += icmsDed;
+
+    if (icmsIssTransitionFactor < 1.0) {
+      const ibsShareInDas = gDas * (rateInfo2.bracket.icmsShare || 0) * (1 - icmsIssTransitionFactor);
+      finalIbsInDas += ibsShareInDas;
+    }
 
     finalIpi += gDas * (rateInfo2.bracket.ipiShare || 0);
   }
@@ -591,7 +883,15 @@ export function runFullTaxSimulation(input: CompanyInput): SimulationSummary {
     finalCpp += gDas * rateInfo3.bracket.cppShare;
     finalPis += gDas * rateInfo3.bracket.pisShare;
     finalCofins += gDas * rateInfo3.bracket.cofinsShare;
-    finalIss += gDas * (rateInfo3.bracket.issShare || 0);
+
+    // ISS no DAS é a maior fatia (~33.5% do Anexo III). Na transição, aplica-se o fator residual
+    const issTheo = gDas * (rateInfo3.bracket.issShare || 0) * icmsIssTransitionFactor;
+    finalIss += issTheo;
+
+    if (icmsIssTransitionFactor < 1.0) {
+      const ibsShareInDas = gDas * (rateInfo3.bracket.issShare || 0) * (1 - icmsIssTransitionFactor);
+      finalIbsInDas += ibsShareInDas;
+    }
   }
 
   // 4. Anexo III - Serviços SEM ISS (Isenção, Imunidade, Exportação, Retenção)
@@ -604,7 +904,7 @@ export function runFullTaxSimulation(input: CompanyInput): SimulationSummary {
     finalPis += gDas * rateInfo3.bracket.pisShare;
     finalCofins += gDas * rateInfo3.bracket.cofinsShare;
 
-    const issTheo = gDas * (rateInfo3.bracket.issShare || 0);
+    const issTheo = gDas * (rateInfo3.bracket.issShare || 0) * icmsIssTransitionFactor;
     deductedIss += issTheo; // Parcela de ISS é deduzida do DAS
   }
 
@@ -617,7 +917,15 @@ export function runFullTaxSimulation(input: CompanyInput): SimulationSummary {
     // Anexo IV não inclui CPP no DAS
     finalPis += gDas * rateInfo4.bracket.pisShare;
     finalCofins += gDas * rateInfo4.bracket.cofinsShare;
-    finalIss += gDas * (rateInfo4.bracket.issShare || 0);
+
+    // ISS no Anexo IV é 44.5% do DAS
+    const issTheo = gDas * (rateInfo4.bracket.issShare || 0) * icmsIssTransitionFactor;
+    finalIss += issTheo;
+
+    if (icmsIssTransitionFactor < 1.0) {
+      const ibsShareInDas = gDas * (rateInfo4.bracket.issShare || 0) * (1 - icmsIssTransitionFactor);
+      finalIbsInDas += ibsShareInDas;
+    }
   }
 
   // 6. Anexo IV - Obras & Serviços SEM ISS (Empreitadas com retenção de ISS)
@@ -630,7 +938,7 @@ export function runFullTaxSimulation(input: CompanyInput): SimulationSummary {
     finalPis += gDas * rateInfo4.bracket.pisShare;
     finalCofins += gDas * rateInfo4.bracket.cofinsShare;
 
-    const issTheo = gDas * (rateInfo4.bracket.issShare || 0);
+    const issTheo = gDas * (rateInfo4.bracket.issShare || 0) * icmsIssTransitionFactor;
     deductedIss += issTheo; // Parcela de ISS é deduzida do DAS
   }
 
@@ -643,10 +951,20 @@ export function runFullTaxSimulation(input: CompanyInput): SimulationSummary {
     finalCpp += gDas * rateInfo5.bracket.cppShare;
     finalPis += gDas * rateInfo5.bracket.pisShare;
     finalCofins += gDas * rateInfo5.bracket.cofinsShare;
-    finalIss += gDas * (rateInfo5.bracket.issShare || 0);
+
+    const issTheo = gDas * (rateInfo5.bracket.issShare || 0) * icmsIssTransitionFactor;
+    finalIss += issTheo;
+
+    if (icmsIssTransitionFactor < 1.0) {
+      const ibsShareInDas = gDas * (rateInfo5.bracket.issShare || 0) * (1 - icmsIssTransitionFactor);
+      finalIbsInDas += ibsShareInDas;
+    }
   }
 
-  const effectiveDasAmount = finalIrpj + finalCsll + finalCpp + finalPis + finalCofins + finalIcms + finalIss + finalIpi;
+  const finalCbsInDas = !transitionFactors.pisCofinsActiveInDas ? (finalPis + finalCofins) : undefined;
+  const effectiveDasAmount = finalIrpj + finalCsll + finalCpp + finalPis + finalCofins + finalIcms + finalIss + finalIbsInDas + finalIpi;
+  const icmsIssTotalInDas = finalIcms + finalIss;
+  const icmsIssSharePct = effectiveDasAmount > 0 ? (icmsIssTotalInDas / effectiveDasAmount) * 100 : 0;
 
   const dasBreakdownSimplificado: DasBreakdown = {
     irpj: finalIrpj,
@@ -657,11 +975,17 @@ export function runFullTaxSimulation(input: CompanyInput): SimulationSummary {
     icms: finalIcms,
     iss: finalIss,
     ipi: finalIpi,
+    cbsInDas: finalCbsInDas,
+    ibsInDas: finalIbsInDas > 0 ? finalIbsInDas : undefined,
     totalDas: effectiveDasAmount,
     deductedPisCofins: totalDeductedPisCofins,
     deductedIcms: deductedIcms,
     deductedIss: deductedIss,
     grossDasBeforeSegregation: grossDasAmount,
+    icmsIssTotalInDas,
+    icmsIssSharePct,
+    transitionYear: transitionFactors.yearNumber,
+    icmsIssTransitionFactor,
   };
 
   // No Anexo IV, a CPP não está incluída no DAS (calculada à parte como ~28.8% de encargos patronais proporcionais à receita do Anexo IV).
@@ -1402,5 +1726,6 @@ export function runFullTaxSimulation(input: CompanyInput): SimulationSummary {
           : 'Nenhuma segregação setorial aplicada. Revenda tributada integralmente.',
     },
     prePostComparison,
+    transitionSchedule: !skipSchedule ? calculateYearlyTransitionSchedule(input) : [],
   };
 }

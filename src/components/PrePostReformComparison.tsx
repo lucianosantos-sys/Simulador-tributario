@@ -14,6 +14,7 @@ import {
   Info,
 } from 'lucide-react';
 import { SimulationSummary } from '../types/tax';
+import { YearlyTransitionScheduleTable } from './YearlyTransitionScheduleTable';
 
 interface PrePostReformComparisonProps {
   summary: SimulationSummary;
@@ -283,6 +284,9 @@ export const PrePostReformComparison: React.FC<PrePostReformComparisonProps> = (
           </table>
         </div>
       </div>
+
+      {/* YEAR-BY-YEAR ICMS/ISS TRANSITION SCHEDULE (EC 132/2023) */}
+      <YearlyTransitionScheduleTable summary={summary} />
 
       {/* MONOFÁSICO & ICMS-ST TRANSITION EXPLANATION */}
       <div className="bg-indigo-950 text-white rounded-2xl p-6 sm:p-7 shadow-xl border border-indigo-900 space-y-4">

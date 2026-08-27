@@ -477,6 +477,20 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
                   </tbody>
                 </table>
               </div>
+
+              {/* Destaque da Parcela ICMS e ISS no DAS */}
+              <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl text-xs space-y-1.5">
+                <div className="flex items-center gap-1.5 font-black text-amber-900">
+                  <Info className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Parcela de ICMS e ISS na Guia DAS (EC 132/2023 - ADCT Arts. 125 a 133):</span>
+                </div>
+                <p className="text-slate-700 leading-relaxed font-medium">
+                  Soma de ICMS (R$ {regimeResult.das.icms.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) + ISS (R$ {regimeResult.das.iss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) = <strong className="text-amber-950">R$ {(regimeResult.das.icms + regimeResult.das.iss).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> ({regimeResult.das.totalDas > 0 ? (((regimeResult.das.icms + regimeResult.das.iss) / regimeResult.das.totalDas) * 100).toFixed(1) : 0}% da Guia DAS total).
+                  {input.simulationYear <= 2028
+                    ? ' No período de 2027 a 2028, 100% da parcela de ICMS/ISS continua calculada e recolhida dentro da guia DAS normal.'
+                    : ` No ano ${input.simulationYear}, aplica-se o fator de transição legal de redução gradual da parcela de ICMS/ISS na DAS.`}
+                </p>
+              </div>
             </div>
           )}
 

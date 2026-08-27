@@ -26,6 +26,10 @@ import {
   Building2,
   ShieldCheck,
   Info,
+  Package,
+  Truck,
+  Receipt,
+  Target,
 } from 'lucide-react';
 import { AnexoType, BusinessSegment, CompanyInput, RegimeResult, SimulationSummary } from '../types/tax';
 import { ActivitySegregationPanel } from './ActivitySegregationPanel';
@@ -374,13 +378,18 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
               </div>
             </div>
 
-            {/* Compras de Insumos */}
-            <div className="p-5 rounded-2xl border border-indigo-100 bg-white shadow-2xs">
-              <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
-                Compras de Insumos / Mercadorias (R$/mês)
-              </label>
-              <p className="text-[11px] text-slate-500 font-medium mb-2">
-                Gastos com mercadorias e insumos (geram créditos de IBS/CBS).
+            {/* Compras de Insumos & Custos Detalhados */}
+            <div className="p-5 rounded-2xl border border-indigo-100 bg-white shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider">
+                  Compras de Insumos / Mercadorias (R$/mês)
+                </label>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Gera Crédito IBS/CBS
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Gastos totais com insumos e mercadorias adquiridas com direito a crédito.
               </p>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
@@ -391,25 +400,131 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
                   min="0"
                   step="1000"
                   value={input.monthlyPurchasesInputs}
-                  onChange={(e) => onChange({ monthlyPurchasesInputs: Number(e.target.value) || 0 })}
+                  onChange={(e) => {
+                    const totalVal = Math.max(0, Number(e.target.value) || 0);
+                    onChange({
+                      monthlyPurchasesInputs: totalVal,
+                      productCostMonthly: Math.round(totalVal * 0.8),
+                      freightExpensesMonthly: Math.round(totalVal * 0.1),
+                      accessoryExpensesMonthly: Math.round(totalVal * 0.1),
+                    });
+                  }}
                   className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
                 />
               </div>
+
+              {/* Sub-detalhamento de Custo, Despesas Acessórias e Frete */}
+              <div className="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-500 font-bold block">Custo de Produto:</span>
+                  <div className="relative mt-0.5">
+                    <span className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none text-slate-400 font-bold text-[10px]">R$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="500"
+                      value={input.productCostMonthly ?? Math.round(input.monthlyPurchasesInputs * 0.8)}
+                      onChange={(e) => {
+                        const pVal = Math.max(0, Number(e.target.value) || 0);
+                        const fVal = input.freightExpensesMonthly ?? Math.round(input.monthlyPurchasesInputs * 0.1);
+                        const aVal = input.accessoryExpensesMonthly ?? Math.round(input.monthlyPurchasesInputs * 0.1);
+                        const total = pVal + fVal + aVal;
+                        onChange({
+                          productCostMonthly: pVal,
+                          monthlyPurchasesInputs: total > 0 ? total : input.monthlyPurchasesInputs,
+                        });
+                      }}
+                      className="w-full pl-7 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold text-xs focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-slate-500 font-bold block">Despesas Acessórias:</span>
+                  <div className="relative mt-0.5">
+                    <span className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none text-slate-400 font-bold text-[10px]">R$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="200"
+                      value={input.accessoryExpensesMonthly ?? Math.round(input.monthlyPurchasesInputs * 0.1)}
+                      onChange={(e) => {
+                        const aVal = Math.max(0, Number(e.target.value) || 0);
+                        const pVal = input.productCostMonthly ?? Math.round(input.monthlyPurchasesInputs * 0.8);
+                        const fVal = input.freightExpensesMonthly ?? Math.round(input.monthlyPurchasesInputs * 0.1);
+                        const total = pVal + fVal + aVal;
+                        onChange({
+                          accessoryExpensesMonthly: aVal,
+                          monthlyPurchasesInputs: total > 0 ? total : input.monthlyPurchasesInputs,
+                        });
+                      }}
+                      className="w-full pl-7 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold text-xs focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-slate-500 font-bold block">Frete / Logística:</span>
+                  <div className="relative mt-0.5">
+                    <span className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none text-slate-400 font-bold text-[10px]">R$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="200"
+                      value={input.freightExpensesMonthly ?? Math.round(input.monthlyPurchasesInputs * 0.1)}
+                      onChange={(e) => {
+                        const fVal = Math.max(0, Number(e.target.value) || 0);
+                        const pVal = input.productCostMonthly ?? Math.round(input.monthlyPurchasesInputs * 0.8);
+                        const aVal = input.accessoryExpensesMonthly ?? Math.round(input.monthlyPurchasesInputs * 0.1);
+                        const total = pVal + fVal + aVal;
+                        onChange({
+                          freightExpensesMonthly: fVal,
+                          monthlyPurchasesInputs: total > 0 ? total : input.monthlyPurchasesInputs,
+                        });
+                      }}
+                      className="w-full pl-7 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold text-xs focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Quadro de Rentabilidade */}
+            {/* Quadro de Rentabilidade & Lucro Líquido */}
             <div className="md:col-span-2 p-5 rounded-2xl border border-emerald-200 bg-emerald-50/60 space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 bg-emerald-500 text-white rounded-lg">
-                  <TrendingUp className="w-4 h-4" />
-                </span>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider">
-                    Margem de Lucro da Empresa (Prévia em Tempo Real)
-                  </h4>
-                  <span className="text-[11px] text-slate-600 font-medium block">
-                    Veja quanto sobra no bolso da empresa antes e depois do pagamento dos impostos.
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 bg-emerald-500 text-white rounded-lg">
+                    <TrendingUp className="w-4 h-4" />
                   </span>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider">
+                      Margem de Lucro da Empresa & Lucro Líquido Efetivo
+                    </h4>
+                    <span className="text-[11px] text-slate-600 font-medium block">
+                      Veja quanto sobra no caixa antes e depois do pagamento dos tributos em cada regime.
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-600">Meta Lucro Líquido:</span>
+                  <div className="relative w-24">
+                    <input
+                      type="number"
+                      min="0"
+                      max="90"
+                      value={input.targetNetProfitPct ?? 15}
+                      onChange={(e) => {
+                        const pVal = Math.max(0, Math.min(90, Number(e.target.value) || 0));
+                        onChange({
+                          targetNetProfitPct: pVal,
+                          targetNetProfitMonthly: (input.monthlyRevenue * pVal) / 100,
+                        });
+                      }}
+                      className="w-full pr-5 pl-2 py-1 bg-white border border-emerald-300 rounded-lg text-emerald-950 font-bold text-xs focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <span className="absolute inset-y-0 right-0 pr-1.5 flex items-center pointer-events-none text-emerald-700 font-bold text-xs">%</span>
+                  </div>
                 </div>
               </div>
 
@@ -430,7 +545,7 @@ export const WizardSimulator: React.FC<WizardSimulatorProps> = ({
 
                 <div className="p-3.5 bg-white rounded-xl border border-emerald-200 shadow-2xs">
                   <span className="text-xs text-emerald-800 font-bold block">
-                    Margem Líquida Real (com impostos no {bestRegime?.name || 'Melhor Regime'}):
+                    Lucro Líquido Real (com impostos no {bestRegime?.name || 'Melhor Regime'}):
                   </span>
                   <div className="flex items-baseline gap-2 mt-1">
                     <span className="text-xl font-black text-emerald-700">

@@ -21,7 +21,47 @@ export interface AnexoRevenueMap {
 
 export type RegimeType = 'simples_simplificado' | 'simples_hibrido' | 'lucro_presumido' | 'lucro_real';
 
-export type SimulationYear = '2027_transicao' | '2033_pleno' | 'personalizado';
+export type SimulationYear =
+  | '2026_teste'
+  | '2027_transicao'
+  | '2028_transicao'
+  | '2029_transicao'
+  | '2030_transicao'
+  | '2031_transicao'
+  | '2032_transicao'
+  | '2033_pleno'
+  | 'personalizado';
+
+export interface TransitionYearDetail {
+  year: number;
+  simulationYearKey: SimulationYear;
+  label: string;
+  phase: string;
+  statusBadge: string;
+  badgeColor: string;
+  // Fatores de transição (EC 132/2023 Arts. 125 a 133 ADCT)
+  icmsIssRemainingFactor: number; // 1.0 (2026-28), 0.9 (2029), 0.8 (2030), 0.7 (2031), 0.6 (2032), 0.0 (2033)
+  icmsIssRemainingPct: number; // 100%, 90%, 80%, 70%, 60%, 0%
+  ibsTransitionFactor: number; // 0.0 (2026), 0.01 (2027-28 teste), 0.1 (2029), 0.2 (2030), 0.3 (2031), 0.4 (2032), 1.0 (2033)
+  cbsRatePct: number; // CBS estimada no ano
+  ibsRatePct: number; // IBS estimado no ano
+  totalIvaDualRatePct: number; // CBS + IBS
+  pisCofinsActiveInDas: boolean; // True em 2026, False a partir de 2027 (substituído pela CBS)
+  // Valores calculados para a empresa no ano específico
+  dasTotal: number;
+  dasIcmsIssAmount: number;
+  dasIcmsIssSharePct: number; // % do DAS que corresponde a ICMS/ISS (geralmente > 32% a 44,5%)
+  dasFederalShareAmount: number; // IRPJ + CSLL + CPP
+  dasPisCofinsOrCbsAmount: number; // Parcela de PIS/COFINS (2026) ou CBS unificada (2027+)
+  simplesHibridoTotal: number;
+  lucroPresumidoTotal: number;
+  lucroRealTotal: number;
+  bestRegime: RegimeType;
+  bestRegimeName: string;
+  annualSavingsVsWorst: number;
+  legalBasis: string;
+  notes: string;
+}
 
 export type BusinessSegment =
   | 'geral'
@@ -55,6 +95,17 @@ export interface CompanyInput {
   monthlyProLabore: number; // Pró-labore dos Sócios (R$/mês)
   monthlyPurchasesInputs: number; // Compras de Mercadorias e Insumos com Crédito de IBS/CBS (R$/mês)
   creditEligibilityPct: number; // % das despesas que geram crédito amplo de IBS/CBS (0 a 100%, padrão 85%)
+  
+  // COMPOSIÇÃO DE CUSTOS, DESPESAS ACESSÓRIAS E FRETE (DRE E CRÉDITOS)
+  productCostMonthly?: number; // Custo de Aquisição de Mercadorias / Insumos / Matéria-Prima (R$/mês)
+  freightExpensesMonthly?: number; // Frete sobre Compras / Vendas e Transporte (R$/mês)
+  accessoryExpensesMonthly?: number; // Despesas Acessórias, Seguros, Embalagens e Armazenagem (R$/mês)
+  
+  // METAS E MARGENS DE LUCRO LÍQUIDO
+  targetNetProfitMonthly?: number; // Lucro Líquido Estimado / Desejado (R$/mês)
+  targetNetProfitPct?: number; // Margem de Lucro Líquido Alvo (%)
+  simplesCenario3MarginPct?: number; // Margem do Simples Simplificado c/ Desconto no Cenário 3 (%)
+
   b2bPercentage: number; // % de Vendas para Pessoas Jurídicas / B2B (0 a 100%)
   b2bDisputeDiscountPct: number; // % de desconto comercial médio se o cliente B2B não tiver crédito amplo
   considerB2BCompetitiveFactor?: boolean; // Considerar Fator Competitivo B2B (risco de desconto e perda de crédito para PJ) na recomendação final
@@ -126,12 +177,19 @@ export interface DasBreakdown {
   icms: number;
   iss: number;
   ipi: number;
+  cbsInDas?: number; // Parcela de CBS unificada no DAS
+  ibsInDas?: number; // Parcela de IBS unificada no DAS durante a transição
   totalDas: number;
   // Detalhes da segregação legal no PGDAS-D
   deductedPisCofins: number;
   deductedIcms: number;
   deductedIss?: number;
   grossDasBeforeSegregation: number;
+  // Métricas da Transição Tributária (EC 132/2023 Arts. 125 a 133 ADCT)
+  icmsIssTotalInDas?: number; // Soma de ICMS + ISS
+  icmsIssSharePct?: number; // % do total do DAS composto por ICMS e ISS (a maior fatia, tipicamente > 32% a 44,5%)
+  transitionYear?: number;
+  icmsIssTransitionFactor?: number; // Fator de redução (1.0 até 2028, 0.9 em 2029 ... 0.0 em 2033)
 }
 
 export interface IbsCbsCalculation {
@@ -407,6 +465,7 @@ export interface SimulationSummary {
     legalNotice: string;
   };
   prePostComparison: PrePostReformComparison;
+  transitionSchedule: TransitionYearDetail[];
 }
 
 export interface PresetScenario {

@@ -22,6 +22,10 @@ import {
   Building2,
   Receipt,
   HelpCircle,
+  Package,
+  Truck,
+  Target,
+  DollarSign,
 } from 'lucide-react';
 import { AnexoCategoryKey, AnexoType, BusinessSegment, CompanyInput, SimulationSummary } from '../types/tax';
 import { ANEXO_NAMES, ANEXO_REVENUE_CATEGORIES } from '../data/taxTables';
@@ -535,6 +539,190 @@ export const ActivitySegregationPanel: React.FC<ActivitySegregationPanelProps> =
                 />
               );
             })}
+          </div>
+        </div>
+      </div>
+
+      {/* CUSTOS DE PRODUTOS, DESPESAS ACESSÓRIAS, FRETE E LUCRO LÍQUIDO (PRIMEIRA TELA) */}
+      <div className="bg-white rounded-2xl border border-indigo-100 p-5 space-y-4 shadow-2xs">
+        <div className="flex items-center justify-between border-b border-indigo-50 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 bg-indigo-600 text-white rounded-lg">
+              <DollarSign className="w-4 h-4" />
+            </span>
+            <div>
+              <h4 className="text-xs sm:text-sm font-black text-indigo-950 uppercase tracking-wider">
+                Custos de Produtos, Despesas Acessórias, Frete e Lucro Líquido
+              </h4>
+              <span className="text-[11px] text-slate-500 font-medium block">
+                Composição financeira para cálculo de créditos fiscais de IBS/CBS, DRE e rentabilidade.
+              </span>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+            DRE & Créditos
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Custo de Produto / Mercadoria */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-slate-700">
+              <Package className="w-4 h-4 text-indigo-600" />
+              <label className="text-xs font-bold uppercase tracking-wider block">
+                Custo de Produto (R$/mês)
+              </label>
+            </div>
+            <p className="text-[10px] text-slate-500 leading-tight">
+              Aquisição de insumos / mercadorias
+            </p>
+            <div className="relative pt-0.5">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-bold text-xs">
+                R$
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="500"
+                value={input.productCostMonthly ?? (input.monthlyPurchasesInputs ? Math.round(input.monthlyPurchasesInputs * 0.8) : 0)}
+                onChange={(e) => {
+                  const prodVal = Math.max(0, Number(e.target.value) || 0);
+                  const freightVal = input.freightExpensesMonthly ?? 0;
+                  const accessoryVal = input.accessoryExpensesMonthly ?? 0;
+                  const totalPurchases = prodVal + freightVal + accessoryVal;
+                  onChange({
+                    productCostMonthly: prodVal,
+                    monthlyPurchasesInputs: totalPurchases > 0 ? totalPurchases : input.monthlyPurchasesInputs,
+                  });
+                }}
+                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-bold text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Despesas Acessórias */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-slate-700">
+              <Receipt className="w-4 h-4 text-indigo-600" />
+              <label className="text-xs font-bold uppercase tracking-wider block">
+                Despesas Acessórias (R$/mês)
+              </label>
+            </div>
+            <p className="text-[10px] text-slate-500 leading-tight">
+              Seguros, embalagens, armazenagem
+            </p>
+            <div className="relative pt-0.5">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-bold text-xs">
+                R$
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="200"
+                value={input.accessoryExpensesMonthly ?? (input.monthlyPurchasesInputs ? Math.round(input.monthlyPurchasesInputs * 0.1) : 0)}
+                onChange={(e) => {
+                  const accessoryVal = Math.max(0, Number(e.target.value) || 0);
+                  const prodVal = input.productCostMonthly ?? (input.monthlyPurchasesInputs ? Math.round(input.monthlyPurchasesInputs * 0.8) : 0);
+                  const freightVal = input.freightExpensesMonthly ?? (input.monthlyPurchasesInputs ? Math.round(input.monthlyPurchasesInputs * 0.1) : 0);
+                  const totalPurchases = prodVal + freightVal + accessoryVal;
+                  onChange({
+                    accessoryExpensesMonthly: accessoryVal,
+                    monthlyPurchasesInputs: totalPurchases > 0 ? totalPurchases : input.monthlyPurchasesInputs,
+                  });
+                }}
+                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-bold text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Frete */}
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-slate-700">
+              <Truck className="w-4 h-4 text-indigo-600" />
+              <label className="text-xs font-bold uppercase tracking-wider block">
+                Frete & Logística (R$/mês)
+              </label>
+            </div>
+            <p className="text-[10px] text-slate-500 leading-tight">
+              Transporte sobre compras e entregas
+            </p>
+            <div className="relative pt-0.5">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-bold text-xs">
+                R$
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="200"
+                value={input.freightExpensesMonthly ?? (input.monthlyPurchasesInputs ? Math.round(input.monthlyPurchasesInputs * 0.1) : 0)}
+                onChange={(e) => {
+                  const freightVal = Math.max(0, Number(e.target.value) || 0);
+                  const prodVal = input.productCostMonthly ?? (input.monthlyPurchasesInputs ? Math.round(input.monthlyPurchasesInputs * 0.8) : 0);
+                  const accessoryVal = input.accessoryExpensesMonthly ?? (input.monthlyPurchasesInputs ? Math.round(input.monthlyPurchasesInputs * 0.1) : 0);
+                  const totalPurchases = prodVal + freightVal + accessoryVal;
+                  onChange({
+                    freightExpensesMonthly: freightVal,
+                    monthlyPurchasesInputs: totalPurchases > 0 ? totalPurchases : input.monthlyPurchasesInputs,
+                  });
+                }}
+                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-bold text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Lucro Líquido Alvo / Estimado */}
+          <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-emerald-900">
+              <Target className="w-4 h-4 text-emerald-600" />
+              <label className="text-xs font-bold uppercase tracking-wider block">
+                Lucro Líquido Alvo
+              </label>
+            </div>
+            <p className="text-[10px] text-emerald-700 leading-tight">
+              Meta ou margem líquida esperada
+            </p>
+            <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="90"
+                  step="1"
+                  placeholder="Margem %"
+                  value={input.targetNetProfitPct ?? (summary?.results?.[summary.bestRegime]?.profitMarginAfterTaxesPct ? Math.round(summary.results[summary.bestRegime].profitMarginAfterTaxesPct) : 15)}
+                  onChange={(e) => {
+                    const pctVal = Math.max(0, Math.min(90, Number(e.target.value) || 0));
+                    const profitVal = (effectiveTotalRevenue * pctVal) / 100;
+                    onChange({
+                      targetNetProfitPct: pctVal,
+                      targetNetProfitMonthly: profitVal,
+                    });
+                  }}
+                  className="w-full pr-5 pl-2 py-2 bg-white border border-emerald-300 rounded-lg text-emerald-950 font-bold text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+                />
+                <span className="absolute inset-y-0 right-0 pr-1.5 flex items-center pointer-events-none text-emerald-600 font-bold text-xs">
+                  %
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  step="500"
+                  placeholder="R$/mês"
+                  value={input.targetNetProfitMonthly ?? Math.round((effectiveTotalRevenue * ((input.targetNetProfitPct ?? 15) / 100)))}
+                  onChange={(e) => {
+                    const profitVal = Math.max(0, Number(e.target.value) || 0);
+                    const pctVal = effectiveTotalRevenue > 0 ? (profitVal / effectiveTotalRevenue) * 100 : 0;
+                    onChange({
+                      targetNetProfitMonthly: profitVal,
+                      targetNetProfitPct: Number(pctVal.toFixed(1)),
+                    });
+                  }}
+                  className="w-full pl-2 pr-1 py-2 bg-white border border-emerald-300 rounded-lg text-emerald-950 font-bold text-[11px] focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
