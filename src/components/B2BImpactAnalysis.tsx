@@ -35,6 +35,7 @@ export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, o
   const [productCost, setProductCost] = useState<number>(450);
   const [ancillaryExpenses, setAncillaryExpenses] = useState<number>(50);
   const [freightCost, setFreightCost] = useState<number>(50);
+  const [customDiscountPct, setCustomDiscountPct] = useState<number | null>(null);
 
   const b2bMonthlyRevenue = (input.monthlyRevenue * input.b2bPercentage) / 100;
   const b2cMonthlyRevenue = input.monthlyRevenue - b2bMonthlyRevenue;
@@ -65,6 +66,9 @@ export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, o
       ? Math.max(0, ((fullRateDecimal - simplesCreditRateDecimal) / (1 - simplesCreditRateDecimal)) * 100)
       : 0;
 
+  // Desconto Ativo no Cenário 3 (Padrão calculado ou personalizado pelo usuário)
+  const activeDiscountPct = customDiscountPct !== null ? customDiscountPct : requiredDiscountPct;
+
   // Simulação de Pedido / Fatura Unitária
   const sampleVal = sampleInvoice > 0 ? sampleInvoice : 1000;
   const totalItemCost = Math.max(0, productCost) + Math.max(0, ancillaryExpenses) + Math.max(0, freightCost);
@@ -89,17 +93,29 @@ export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, o
   const sampleSimplesNetProfit = sampleVal - sampleSimplesTax - totalItemCost;
   const sampleSimplesProfitMarginPct = sampleVal > 0 ? (sampleSimplesNetProfit / sampleVal) * 100 : 0;
 
-  // Cenário 3: Simplificado com desconto de equiparação
-  const sampleDiscountAmount = sampleVal * (requiredDiscountPct / 100);
-  const sampleDiscountedPrice = sampleVal - sampleDiscountAmount;
+  // Cenário 3: Simplificado com desconto / margem configurável
+  const sampleDiscountAmount = sampleVal * (activeDiscountPct / 100);
+  const sampleDiscountedPrice = Math.max(0, sampleVal - sampleDiscountAmount);
   const sampleDiscountedCredit = sampleDiscountedPrice * simplesCreditRateDecimal;
   const sampleDiscountedNetCost = sampleDiscountedPrice - sampleDiscountedCredit;
   const sampleDiscountedTax = sampleDiscountedPrice * simplificadoEffectiveTaxRate;
   const sampleDiscountedNetProfit = sampleDiscountedPrice - sampleDiscountedTax - totalItemCost;
   const sampleDiscountedProfitMarginPct = sampleDiscountedPrice > 0 ? (sampleDiscountedNetProfit / sampleDiscountedPrice) * 100 : 0;
 
+  // Função para calcular % de desconto a partir de uma margem alvo desejada
+  const handleTargetMarginChange = (targetMarginPct: number) => {
+    if (sampleVal <= 0) return;
+    const targetMarginDec = targetMarginPct / 100;
+    const denominator = 1 - simplificadoEffectiveTaxRate - targetMarginDec;
+    if (denominator > 0.001) {
+      const requiredPrice = totalItemCost / denominator;
+      const discountPct = ((sampleVal - requiredPrice) / sampleVal) * 100;
+      setCustomDiscountPct(Math.max(-50, Math.min(95, Number(discountPct.toFixed(2)))));
+    }
+  };
+
   // Impacto financeiro consolidado na carteira B2B da empresa
-  const monthlyB2BDiscountTotal = b2bMonthlyRevenue * (requiredDiscountPct / 100);
+  const monthlyB2BDiscountTotal = b2bMonthlyRevenue * (activeDiscountPct / 100);
   const annualB2BDiscountTotal = monthlyB2BDiscountTotal * 12;
 
   return (
@@ -640,7 +656,7 @@ export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, o
             </div>
           </div>
 
-          {/* CENÁRIO C: SIMPLES SIMPLIFICADO COM DESCONTO DE EQUIPARAÇÃO */}
+          {/* CENÁRIO C: SIMPLES SIMPLIFICADO COM DESCONTO DE EQUIPARAÇÃO / MARGEM CONFIGURÁVEL */}
           <div className="p-5 rounded-2xl border-2 border-indigo-500 bg-indigo-50/40 space-y-4 flex flex-col justify-between shadow-2xs">
             <div className="space-y-3">
               <div>
@@ -648,14 +664,96 @@ export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, o
                   <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-indigo-600 text-white uppercase tracking-wider">
                     Cenário 3
                   </span>
-                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                  <div className="flex items-center gap-1">
+                    {customDiscountPct !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomDiscountPct(null)}
+                        className="text-[10px] font-bold text-indigo-700 hover:text-indigo-900 bg-white px-2 py-0.5 rounded-full border border-indigo-200 cursor-pointer shadow-2xs transition-colors"
+                        title="Restaurar percentual de desconto exato para equiparação"
+                      >
+                        Resetar ({requiredDiscountPct.toFixed(1)}%)
+                      </button>
+                    )}
+                    <Sparkles className="w-4 h-4 text-indigo-600" />
+                  </div>
                 </div>
                 <h4 className="text-sm font-black text-slate-900">
-                  Simples Simplificado c/ Desconto ({requiredDiscountPct.toFixed(1)}%)
+                  Simples Simplificado c/ Desconto ({activeDiscountPct.toFixed(1)}%)
                 </h4>
                 <p className="text-[11px] text-slate-500 font-medium">
-                  Desconto concedido para neutralizar o custo do comprador.
+                  {customDiscountPct !== null ? 'Desconto e margem ajustados manualmente para este pedido.' : 'Desconto calculado para neutralizar o custo do comprador PJ.'}
                 </p>
+              </div>
+
+              {/* CONTROLES DE AJUSTE: % DE DESCONTO & MARGEM DE LUCRO ALVO */}
+              <div className="bg-white p-3 rounded-xl border border-indigo-200 space-y-2.5 shadow-2xs">
+                <span className="text-[10px] font-black text-indigo-900 uppercase tracking-wider block font-sans flex items-center justify-between">
+                  <span>Ajustar Margem / Desconto</span>
+                  <span className="text-[9px] text-indigo-600 font-bold">Interativo</span>
+                </span>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Ajuste por % Desconto */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">
+                      % Desconto:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="90"
+                        step="0.5"
+                        value={Number(activeDiscountPct.toFixed(1))}
+                        onChange={(e) => setCustomDiscountPct(Math.max(0, Math.min(90, Number(e.target.value) || 0)))}
+                        className="w-full pr-6 pl-2 py-1 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-900 font-mono focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none"
+                      />
+                      <span className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none text-slate-400 text-xs font-bold">
+                        %
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Ajuste por % Margem de Lucro Alvo */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600 block">
+                      Margem Alvo:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="-50"
+                        max="80"
+                        step="0.5"
+                        value={Number(sampleDiscountedProfitMarginPct.toFixed(1))}
+                        onChange={(e) => handleTargetMarginChange(Number(e.target.value) || 0)}
+                        className="w-full pr-6 pl-2 py-1 bg-indigo-50/50 border border-indigo-300 rounded-lg text-xs font-bold text-indigo-950 font-mono focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none"
+                      />
+                      <span className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none text-indigo-500 text-xs font-bold">
+                        %
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Slider Rápido de Margem / Desconto */}
+                <div className="space-y-1 pt-1 border-t border-slate-100">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                    <span>0% desc.</span>
+                    <span className="text-indigo-700 font-black">{activeDiscountPct.toFixed(1)}% desc. (Margem {sampleDiscountedProfitMarginPct.toFixed(1)}%)</span>
+                    <span>50% desc.</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="50"
+                    step="0.5"
+                    value={Math.min(50, Math.max(0, activeDiscountPct))}
+                    onChange={(e) => setCustomDiscountPct(Number(e.target.value))}
+                    className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                  />
+                </div>
               </div>
 
               {/* Visão Cliente PJ */}
@@ -709,10 +807,22 @@ export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, o
             </div>
 
             <div className="text-[11px] text-indigo-950 font-bold space-y-0.5 pt-1 border-t border-indigo-200">
-              <span className="text-emerald-700 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                Custo do cliente equiparado ao Regime Regular!
-              </span>
+              {Math.abs(sampleDiscountedNetCost - sampleRegularNetCost) < 0.5 ? (
+                <span className="text-emerald-700 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  Custo do cliente equiparado ao Regime Regular!
+                </span>
+              ) : sampleDiscountedNetCost < sampleRegularNetCost ? (
+                <span className="text-indigo-700 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  Mais barato para o cliente PJ que o Regime Regular!
+                </span>
+              ) : (
+                <span className="text-amber-700 flex items-center gap-1">
+                  <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
+                  +R$ {(sampleDiscountedNetCost - sampleRegularNetCost).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} mais caro que o Regime Regular
+                </span>
+              )}
               <span className="text-[10px] text-red-600 font-medium block">
                 Sua empresa abre mão de R$ {sampleDiscountAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} da receita.
               </span>
