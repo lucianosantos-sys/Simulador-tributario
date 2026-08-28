@@ -55,7 +55,7 @@ export default function App() {
     b2bDisputeDiscountPct: 15,
     lucroRealMarginPct: 12,
     simulationYear: '2027_transicao',
-    cbsRate2027: 0.9,
+    cbsRate2027: 8.8,
     ibsRate2027: 0.1,
     fullCbsIbsRate: 26.5,
     issRate: 5.0,

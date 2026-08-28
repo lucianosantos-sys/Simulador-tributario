@@ -43,11 +43,13 @@ export const B2BImpactAnalysis: React.FC<B2BImpactAnalysisProps> = ({ summary, o
   const simplificado = results.simples_simplificado;
   const hibrido = results.simples_hibrido;
 
-  // Alíquota plena de IBS/CBS vigente ou configurada
+  // Alíquota plena de IBS/CBS vigente ou configurada (Lei Complementar nº 214/2025)
   const fullIbsCbsRate = input.useCustomIbsCbsRate
     ? input.customCbsRatePct + input.customIbsRatePct
-    : input.simulationYear === 2027
+    : input.simulationYear === '2027_transicao'
     ? input.cbsRate2027 + input.ibsRate2027
+    : input.simulationYear === '2026_teste'
+    ? 1.0
     : input.fullCbsIbsRate || 26.5;
 
   const fullRateDecimal = fullIbsCbsRate / 100;

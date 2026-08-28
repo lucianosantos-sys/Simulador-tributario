@@ -556,12 +556,43 @@ export const RegimeComparisonCards: React.FC<RegimeComparisonCardsProps> = ({
                     <span className={`text-xs font-bold ${isBest ? 'text-indigo-200' : 'text-slate-500'}`}>/mês</span>
                   </div>
                   <div className={`flex items-center justify-between text-xs mt-1 font-semibold ${isBest ? 'text-indigo-200' : 'text-slate-500'}`}>
-                    <span>Alíquota Direta:</span>
+                    <span>Carga Tributária Efetiva:</span>
                     <span className={`font-black ${isBest ? 'text-emerald-300' : 'text-slate-800'}`}>
                       {regimeData.effectiveRatePct.toFixed(2)}%
                     </span>
                   </div>
-                  <div className={`flex items-center justify-between text-xs mt-0.5 ${isBest ? 'text-indigo-200' : 'text-slate-500'}`}>
+
+                  {/* Alíquota Efetiva do Simples Nacional (LC 123/2006) */}
+                  {(regimeData.regime === 'simples_simplificado' || regimeData.regime === 'simples_hibrido') && (
+                    <div className={`mt-2 p-2.5 rounded-xl text-[11px] border font-sans space-y-1 ${
+                      isBest
+                        ? 'bg-indigo-900/80 border-indigo-500/50 text-indigo-100'
+                        : 'bg-indigo-50/80 border-indigo-200/70 text-indigo-950'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold flex items-center gap-1">
+                          📊 Alíquota Efetiva Simples:
+                        </span>
+                        <span className={`font-black font-mono text-xs ${isBest ? 'text-emerald-300' : 'text-indigo-900'}`}>
+                          {(regimeData.audit?.simplesEffectiveRate ? (regimeData.audit.simplesEffectiveRate * 100) : (regimeData.das.effectiveSimplesRatePct ?? 0)).toFixed(2)}%
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] opacity-80 font-mono">
+                        <span>Anexo {(regimeData.audit?.appliedAnexo || 'anexo_1').replace('anexo_', '').toUpperCase()} • Faixa {regimeData.audit?.bracketNumber || 1}</span>
+                        <span>Nominal: {((regimeData.audit?.nominalRate || 0) * 100).toFixed(2)}%</span>
+                      </div>
+                      {input.monthlyRevenue > 0 && (
+                        <div className={`flex items-center justify-between text-[10px] pt-1 border-t ${isBest ? 'border-indigo-700/60 text-emerald-300' : 'border-indigo-200 text-indigo-700'} font-semibold`}>
+                          <span>Alíquota Efetiva do DAS a Pagar:</span>
+                          <span className="font-bold font-mono">
+                            {((regimeData.das.totalDas / input.monthlyRevenue) * 100).toFixed(2)}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className={`flex items-center justify-between text-xs mt-1.5 ${isBest ? 'text-indigo-200' : 'text-slate-500'}`}>
                     <span>Total Anual:</span>
                     <span className={`font-bold ${isBest ? 'text-white' : 'text-slate-700'}`}>
                       R$ {regimeData.totalAnnualTax.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
@@ -581,11 +612,18 @@ export const RegimeComparisonCards: React.FC<RegimeComparisonCardsProps> = ({
                       R$ {regimeData.das.totalDas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>IBS + CBS Líquido:</span>
-                    <span className={`font-bold ${isBest ? 'text-white' : 'text-slate-800'}`}>
-                      R$ {regimeData.ibsCbs.netPayable.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </span>
+                  <div className="flex justify-between items-center">
+                    <span>IBS + CBS (LC 214/25):</span>
+                    <div className="text-right">
+                      <span className={`font-bold ${isBest ? 'text-white' : 'text-slate-800'}`}>
+                        R$ {regimeData.ibsCbs.netPayable.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                      {input.monthlyRevenue > 0 && regimeData.ibsCbs.netPayable > 0 && (
+                        <span className={`text-[10px] block ${isBest ? 'text-emerald-300' : 'text-indigo-600'}`}>
+                          ({((regimeData.ibsCbs.netPayable / input.monthlyRevenue) * 100).toFixed(2)}% efetiva)
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span>Encargos Folha (INSS):</span>

@@ -137,10 +137,10 @@ export interface CompanyInput {
   salesReductionMode?: ReductionMode; // 'padrao_segmento' ou 'rateio_personalizado'
   salesBreakdown?: ReductionTierBreakdown;
 
-  simulationYear: SimulationYear; // 2027 (transição CBS 0.9% + IBS 0.1%), 2033 (pleno 26.5%) ou personalizado
-  cbsRate2027: number; // CBS padrão de transição 2027 (padrão 0.9%)
-  ibsRate2027: number; // IBS padrão de transição 2027 (padrão 0.1%)
-  fullCbsIbsRate: number; // Alíquota estimada IBS+CBS plena (sugerida 26.5%)
+  simulationYear: SimulationYear; // 2026 (teste CBS 0.9% + IBS 0.1%), 2027 (CBS plena 8.8% + IBS 0.1% - LC 214/2025), 2033 (pleno 26.5%) ou personalizado
+  cbsRate2027: number; // CBS padrão de transição 2027 pela LC 214/2025 (padrão 8.8%)
+  ibsRate2027: number; // IBS padrão de teste 2027 (padrão 0.1%)
+  fullCbsIbsRate: number; // Alíquota estimada IBS+CBS plena (padrão 26.5% pela LC 214/2025)
   
   // CONFIGURAÇÃO PERSONALIZADA DE ALÍQUOTA IBS / CBS
   useCustomIbsCbsRate: boolean; // Ativa modo de alíquota personalizada
@@ -185,6 +185,13 @@ export interface DasBreakdown {
   deductedIcms: number;
   deductedIss?: number;
   grossDasBeforeSegregation: number;
+  // Alíquotas Efetivas do Simples Nacional (LC 123/2006 Art. 18 e LC 214/2025)
+  nominalRatePct?: number; // Alíquota nominal da tabela do Simples (%)
+  deductionAmount?: number; // Parcela a deduzir da faixa (R$)
+  effectiveSimplesRatePct?: number; // Alíquota efetiva oficial do Simples pela fórmula [(RBT12 × AliqNominal) - Parcela] ÷ RBT12 (%)
+  effectiveDasPayableRatePct?: number; // Alíquota efetiva líquida da guia DAS a recolher (% sobre faturamento)
+  bracketNumber?: number; // Faixa do Simples (1 a 6)
+  appliedAnexo?: string; // Anexo aplicado (I, II, III, IV ou V)
   // Métricas da Transição Tributária (EC 132/2023 Arts. 125 a 133 ADCT)
   icmsIssTotalInDas?: number; // Soma de ICMS + ISS
   icmsIssSharePct?: number; // % do total do DAS composto por ICMS e ISS (a maior fatia, tipicamente > 32% a 44,5%)
@@ -197,8 +204,18 @@ export interface IbsCbsCalculation {
   cbsRateApplied: number; // % CBS aplicada
   ibsRateApplied: number; // % IBS aplicada
   grossDebit: number; // Débito sobre faturamento
+  cbsGrossDebit?: number; // Débito CBS (R$)
+  ibsGrossDebit?: number; // Débito IBS (R$)
   eligibleCredits: number; // Crédito sobre insumos/compras
+  cbsEligibleCredits?: number; // Créditos CBS (R$)
+  ibsEligibleCredits?: number; // Créditos IBS (R$)
   netPayable: number; // Saldo a recolher (Débito - Crédito)
+  cbsNetPayable?: number; // Saldo a recolher CBS (R$)
+  ibsNetPayable?: number; // Saldo a recolher IBS (R$)
+  effectiveNetRatePct?: number; // Alíquota efetiva líquida sobre faturamento (%)
+  nominalCbsRatePct?: number; // Alíquota nominal CBS (%)
+  nominalIbsRatePct?: number; // Alíquota nominal IBS (%)
+  nominalTotalRatePct?: number; // Alíquota nominal total (%)
   creditTransferredToB2B: number; // Crédito gerado para o cliente B2B
   creditTransferRate: number; // % efetiva de crédito para o cliente
   selectiveTaxAmount?: number; // Imposto Seletivo calculado

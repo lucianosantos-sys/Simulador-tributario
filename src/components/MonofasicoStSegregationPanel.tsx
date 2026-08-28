@@ -187,27 +187,32 @@ export const MonofasicoStSegregationPanel: React.FC<MonofasicoStSegregationPanel
 
       {/* TAX SUBSTITUTION ANALYSIS EXPLANATION BOX */}
       <div className="p-4 sm:p-5 rounded-2xl bg-indigo-50/60 border border-indigo-100 space-y-3">
-        <div className="flex items-center gap-2 text-indigo-950 font-bold text-xs">
-          <Sparkles className="w-4 h-4 text-indigo-600" />
-          <span>Análise da Substituição dos Impostos na Reforma Tributária (2027+)</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-indigo-950 font-bold text-xs">
+            <Sparkles className="w-4 h-4 text-indigo-600" />
+            <span>Vantagens Estruturais da Reforma Tributária (LC 214/2025 & EC 132/2023 em 2027+)</span>
+          </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+            Pós-Extinção da Monofasia
+          </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600 leading-relaxed font-medium">
-          <div className="p-3 bg-white rounded-xl border border-indigo-100">
-            <span className="font-bold text-slate-900 block mb-1">
-              1. PIS/COFINS Monofásico → CBS Federal
+          <div className="p-3.5 bg-white rounded-xl border border-indigo-100 space-y-1.5">
+            <span className="font-bold text-indigo-950 block">
+              1. PIS/COFINS Monofásico → CBS com Crédito Amplo
             </span>
-            <p>
-              Na Reforma, a CBS extingue a sistemática monofásica tradicional. A tributação passa a ser uniforme e não-cumulativa sobre o valor agregado: sua empresa toma crédito da CBS destacada na compra e recolhe sobre a venda, sem bitributação e sem exigir parametrização complexa de NCMs monofásicos.
+            <p className="text-[11px] text-slate-600">
+              A <strong>LC 214/2025 extingue a segregação monofásica no DAS</strong> (mantida apenas em combustíveis). Em compensação, no <strong>Simples Híbrido</strong> a empresa toma 100% de crédito de CBS e IBS nas compras, produtos de saúde ganham redução de 60% na alíquota e o risco fiscal de NCM é eliminado.
             </p>
           </div>
 
-          <div className="p-3 bg-white rounded-xl border border-indigo-100">
-            <span className="font-bold text-slate-900 block mb-1">
-              2. ICMS-ST → IBS Estadual/Municipal
+          <div className="p-3.5 bg-white rounded-xl border border-indigo-100 space-y-1.5">
+            <span className="font-bold text-indigo-950 block">
+              2. ICMS-ST → IBS com Cobrança no Destino
             </span>
-            <p>
-              O regime de Substituição Tributária (ICMS-ST) estadual deixa de existir no IBS. A arrecadação migra para o princípio do destino (onde a mercadoria é consumida), permitindo o aproveitamento amplo de créditos de insumos e mercadorias adquiridas em qualquer estado do país.
+            <p className="text-[11px] text-slate-600">
+              O ICMS-ST e as Margens de Valor Agregado (MVA) arbitrárias dos estados são extintos. O IBS é devido exclusivamente no local de consumo, permitindo repasse e apropriação de créditos sem bitributação entre estados.
             </p>
           </div>
         </div>

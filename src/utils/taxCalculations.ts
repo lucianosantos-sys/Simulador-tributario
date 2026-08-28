@@ -36,8 +36,8 @@ export function getTransitionYearFactors(
   }
 ) {
   const fullRate = customParams?.fullCbsIbsRate || 26.5;
-  const fullCbs = fullRate * 0.35; // ~8.8%
-  const fullIbs = fullRate * 0.65; // ~17.7%
+  const fullCbs = customParams?.customCbsRatePct ?? (fullRate === 26.5 ? 8.8 : Number((fullRate * (8.8 / 26.5)).toFixed(2))); // 8.8% CBS Federal (LC 214/2025)
+  const fullIbs = customParams?.customIbsRatePct ?? (fullRate === 26.5 ? 17.7 : Number((fullRate - fullCbs).toFixed(2))); // 17.7% IBS Subnacional (LC 214/2025)
 
   if (customParams?.useCustomIbsCbsRate) {
     const cbs = customParams.customCbsRatePct ?? fullCbs;
@@ -73,30 +73,32 @@ export function getTransitionYearFactors(
         ibsRatePct: 0.1,
         totalIvaDualRatePct: 1.0,
         pisCofinsActiveInDas: true, // PIS e COFINS integrais no DAS
-        label: '2026 (Ano de Teste)',
+        label: '2026 (Ano de Teste - Art. 125 ADCT)',
         phase: 'Fase de Teste Operacional',
         statusBadge: 'CBS 0,9% + IBS 0,1% • ICMS/ISS 100% no DAS',
         badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
         legalBasis: 'Art. 125 do ADCT da CF/88 (EC 132/2023)',
-        notes: 'Ano piloto com alíquota teste de 0,9% CBS e 0,1% IBS compensáveis. ICMS e ISS permanecem 100% vigentes na guia DAS.',
+        notes: 'Ano piloto com alíquota teste de 0,9% CBS e 0,1% IBS compensáveis com PIS/COFINS. ICMS, ISS e PIS/COFINS permanecem 100% vigentes na guia DAS.',
       };
     case '2027_transicao':
+      const cbs2027 = customParams?.cbsRate2027 ?? fullCbs;
+      const ibs2027 = customParams?.ibsRate2027 ?? 0.1;
       return {
         yearNumber: 2027,
         simulationYearKey: '2027_transicao' as SimulationYear,
         icmsIssRemainingFactor: 1.0, // 100% de ICMS e ISS no DAS
         icmsIssRemainingPct: 100,
         ibsTransitionFactor: 0.01,
-        cbsRatePct: customParams?.cbsRate2027 ?? 0.9,
-        ibsRatePct: customParams?.ibsRate2027 ?? 0.1,
-        totalIvaDualRatePct: (customParams?.cbsRate2027 ?? 0.9) + (customParams?.ibsRate2027 ?? 0.1),
+        cbsRatePct: cbs2027,
+        ibsRatePct: ibs2027,
+        totalIvaDualRatePct: Number((cbs2027 + ibs2027).toFixed(2)),
         pisCofinsActiveInDas: false, // PIS e COFINS extintos
-        label: '2027 (Transição CBS)',
-        phase: 'Início da Reforma e Extinção do PIS/COFINS',
-        statusBadge: 'CBS Vigente • ICMS/ISS 100% na Guia DAS (Maior Parcela)',
+        label: '2027 (CBS 8,8% - LC 214/2025)',
+        phase: 'Vigência da CBS Federal e Extinção de PIS/COFINS',
+        statusBadge: `CBS ${cbs2027.toFixed(1)}% (LC 214/25) • IBS ${ibs2027.toFixed(1)}% • ICMS/ISS 100% no DAS`,
         badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-        legalBasis: 'Art. 128 do ADCT da CF/88 (EC 132/2023) e LC 214/2025',
-        notes: 'PIS e COFINS federais são extintos e substituídos pela CBS. ICMS e ISS continuam 100% mantidos e calculados na guia do DAS, correspondendo a mais de 32% a 44,5% do total do DAS.',
+        legalBasis: 'Art. 128 do ADCT da CF/88 (EC 132/2023) e Lei Complementar nº 214/2025',
+        notes: 'A CBS federal entra em vigor com alíquota plena de 8,80% pela Lei Complementar nº 214/2025 e o PIS/COFINS é 100% extinto. O IBS inicia com 0,10% de teste. ICMS e ISS continuam 100% calculados na guia DAS.',
       };
     case '2028_transicao':
       return {
@@ -107,14 +109,14 @@ export function getTransitionYearFactors(
         ibsTransitionFactor: 0.01,
         cbsRatePct: fullCbs, // ~8.8%
         ibsRatePct: 0.1,
-        totalIvaDualRatePct: fullCbs + 0.1,
+        totalIvaDualRatePct: Number((fullCbs + 0.1).toFixed(2)),
         pisCofinsActiveInDas: false,
-        label: '2028 (CBS Plena / ICMS e ISS 100%)',
+        label: '2028 (CBS Plena 8,8% - LC 214/2025)',
         phase: 'Consolidação da CBS Federal',
-        statusBadge: 'CBS Plena 8,8% • ICMS/ISS 100% no DAS',
+        statusBadge: 'CBS Plena 8,8% (LC 214/25) • ICMS/ISS 100% no DAS',
         badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-        legalBasis: 'Art. 129 do ADCT da CF/88 (EC 132/2023)',
-        notes: 'CBS federal em alíquota plena. ICMS e ISS continuam 100% calculados dentro da guia unificada do DAS.',
+        legalBasis: 'Art. 129 do ADCT da CF/88 (EC 132/2023) e LC 214/2025',
+        notes: 'CBS federal em alíquota plena de 8,80%. ICMS e ISS continuam 100% calculados dentro da guia unificada do DAS.',
       };
     case '2029_transicao':
       return {
@@ -512,7 +514,7 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
     healthDiscountRatePct = 60,
     businessSegment = 'geral',
     simulationYear = '2027_transicao',
-    cbsRate2027 = 0.9,
+    cbsRate2027 = 8.8,
     ibsRate2027 = 0.1,
     fullCbsIbsRate = 26.5,
     useCustomIbsCbsRate = false,
@@ -788,8 +790,23 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
   // Volume de vendas B2B e B2C
   const b2bRevenue = totalCalculatedRevenue * (b2bPercentage / 100);
 
-  // Percentuais de segregação de Monofásico e ICMS-ST (incidem sobre a receita de mercadorias/vendas)
-  const monofasicoRatio = Math.min(1, Math.max(0, monofasicoPisCofinsPercentage / 100));
+  // =========================================================================
+  // SEGREGAÇÃO LEGAL: REGRAS DA LC 123/2006 E LEI COMPLEMENTAR Nº 214/2025
+  // =========================================================================
+  // 1. No cenário Pré-Reforma (2026): Aplica-se a segregação de PIS/COFINS monofásico
+  //    (Leis 10.147/00, 10.485/02, 13.097/15) e ICMS-ST (Convênio 142/18) no DAS.
+  // 2. A partir de 2027 (LC 214/2025 & EC 132/2023): A Lei Complementar nº 214/2025
+  //    EXTINGUIU expressamente o regime monofásico de PIS/COFINS para autopeças,
+  //    medicamentos, cosméticos e bebidas frias, substituindo-o pela CBS/IBS não-cumulativa
+  //    com créditos amplos (e alíquota com 60% de redução para saúde/medicamentos).
+  // 3. A LC 214/2025 manteve o regime monofásico EXCLUSIVAMENTE para COMBUSTÍVEIS E LUBRIFICANTES
+  //    (art. 155, § 2º, XII, "h" e 195, § 17 da CF/88 regulamentados pela LC 214/2025).
+  const isPreReform = simulationYear === '2026_teste';
+  const isCombustiveisSegment = businessSegment === 'combustiveis';
+  const isMonofasicoLegallyActive = isPreReform || isCombustiveisSegment;
+
+  const rawMonofasicoRatio = Math.min(1, Math.max(0, monofasicoPisCofinsPercentage / 100));
+  const effectiveMonofasicoRatio = isMonofasicoLegallyActive ? rawMonofasicoRatio : 0;
   const icmsStRatio = Math.min(1, Math.max(0, icmsStPercentage / 100));
 
   // Custos Operacionais e Margem sem considerar impostos
@@ -823,11 +840,11 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
     finalCpp += gDas * rateInfo1.bracket.cppShare;
 
     const pisTheo = gDas * rateInfo1.bracket.pisShare;
-    const pisDed = pisTheo * monofasicoRatio;
+    const pisDed = pisTheo * effectiveMonofasicoRatio;
     finalPis += (pisTheo - pisDed);
 
     const cofinsTheo = gDas * rateInfo1.bracket.cofinsShare;
-    const cofinsDed = cofinsTheo * monofasicoRatio;
+    const cofinsDed = cofinsTheo * effectiveMonofasicoRatio;
     finalCofins += (cofinsTheo - cofinsDed);
     totalDeductedPisCofins += (pisDed + cofinsDed);
 
@@ -853,11 +870,11 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
     finalCpp += gDas * rateInfo2.bracket.cppShare;
 
     const pisTheo = gDas * rateInfo2.bracket.pisShare;
-    const pisDed = pisTheo * monofasicoRatio;
+    const pisDed = pisTheo * effectiveMonofasicoRatio;
     finalPis += (pisTheo - pisDed);
 
     const cofinsTheo = gDas * rateInfo2.bracket.cofinsShare;
-    const cofinsDed = cofinsTheo * monofasicoRatio;
+    const cofinsDed = cofinsTheo * effectiveMonofasicoRatio;
     finalCofins += (cofinsTheo - cofinsDed);
     totalDeductedPisCofins += (pisDed + cofinsDed);
 
@@ -982,6 +999,12 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
     deductedIcms: deductedIcms,
     deductedIss: deductedIss,
     grossDasBeforeSegregation: grossDasAmount,
+    nominalRatePct: bracket.nominalRate * 100,
+    deductionAmount: bracket.deduction,
+    effectiveSimplesRatePct: simplesEffectiveRate * 100,
+    effectiveDasPayableRatePct: totalCalculatedRevenue > 0 ? (effectiveDasAmount / totalCalculatedRevenue) * 100 : (simplesEffectiveRate * 100),
+    bracketNumber: bracket.bracket,
+    appliedAnexo: effectiveAnexo,
     icmsIssTotalInDas,
     icmsIssSharePct,
     transitionYear: transitionFactors.yearNumber,
@@ -1023,6 +1046,14 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
     totalAnnual: (totalDeductedPisCofins + deductedIcms + deductedIss) * 12,
   };
 
+  // Proporção e segregação exata de CBS (Federal - LC 214/2025) e IBS (Subnacional)
+  const totalAppliedRateSum = effectiveCbsRate + effectiveIbsRate;
+  const cbsRatio = totalAppliedRateSum > 0 ? effectiveCbsRate / totalAppliedRateSum : (8.8 / 26.5);
+  const ibsRatio = 1 - cbsRatio;
+  const nominalCbsRatePct = transitionFactors.cbsRatePct;
+  const nominalIbsRatePct = transitionFactors.ibsRatePct;
+  const nominalTotalRatePct = Number((transitionFactors.cbsRatePct + transitionFactors.ibsRatePct).toFixed(2));
+
   const resultSimplificado: RegimeResult = {
     regime: 'simples_simplificado',
     name: 'Simples Nacional Simplificado',
@@ -1035,8 +1066,18 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
       cbsRateApplied: effectiveCbsRate,
       ibsRateApplied: effectiveIbsRate,
       grossDebit: grossDasAmount * (bracket.cofinsShare + bracket.pisShare),
+      cbsGrossDebit: (grossDasAmount * (bracket.cofinsShare + bracket.pisShare)) * cbsRatio,
+      ibsGrossDebit: (grossDasAmount * (bracket.cofinsShare + bracket.pisShare)) * ibsRatio,
       eligibleCredits: 0,
+      cbsEligibleCredits: 0,
+      ibsEligibleCredits: 0,
       netPayable: 0,
+      cbsNetPayable: 0,
+      ibsNetPayable: 0,
+      effectiveNetRatePct: 0,
+      nominalCbsRatePct,
+      nominalIbsRatePct,
+      nominalTotalRatePct,
       creditTransferredToB2B: b2bCreditTransferredSimplificado,
       creditTransferRate: simplesCreditShareRate,
       selectiveTaxAmount: 0,
@@ -1114,9 +1155,16 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
   };
 
   // -------------------------------------------------------------
-  // 2. REGIME: SIMPLES NACIONAL HÍBRIDO (IBS/CBS Fora do DAS)
+  // 2. REGIME: SIMPLES NACIONAL HÍBRIDO (IBS/CBS Fora do DAS - LC 214/2025)
   // -------------------------------------------------------------
-  const dasHibridoAmount = finalIrpj + finalCsll + (isAnexo4Active ? 0 : finalCpp);
+  // Na fase de transição (2027 a 2032):
+  // - PIS e COFINS são excluídos do DAS (apurados na CBS não-cumulativa por fora)
+  // - ICMS e ISS permanecem no DAS proporcionalmente ao fator de transição (100% em 2027-28, 90% em 2029... 0% em 2033)
+  // - IRPJ, CSLL e CPP (para anexos com CPP no DAS) continuam integrais no DAS
+  // - A partir de 2033 (vigência plena), ICMS e ISS são 100% extintos (0% no DAS), ficando o DAS composto apenas por IRPJ, CSLL e CPP.
+  const hibridoIcmsInDas = finalIcms;
+  const hibridoIssInDas = finalIss;
+  const dasHibridoAmount = finalIrpj + finalCsll + (isAnexo4Active ? 0 : finalCpp) + hibridoIcmsInDas + hibridoIssInDas + finalIpi;
 
   const dasBreakdownHibrido: DasBreakdown = {
     irpj: finalIrpj,
@@ -1124,17 +1172,36 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
     cofins: 0,
     pis: 0,
     cpp: isAnexo4Active ? 0 : finalCpp,
-    icms: 0,
-    iss: 0,
-    ipi: 0,
+    icms: hibridoIcmsInDas,
+    iss: hibridoIssInDas,
+    ipi: finalIpi,
     totalDas: dasHibridoAmount,
     deductedPisCofins: finalPis + finalCofins + totalDeductedPisCofins,
-    deductedIcms: finalIcms + finalIss + deductedIcms,
+    deductedIcms: deductedIcms,
+    deductedIss: deductedIss,
     grossDasBeforeSegregation: grossDasAmount,
+    nominalRatePct: bracket.nominalRate * 100,
+    deductionAmount: bracket.deduction,
+    effectiveSimplesRatePct: simplesEffectiveRate * 100,
+    effectiveDasPayableRatePct: totalCalculatedRevenue > 0 ? (dasHibridoAmount / totalCalculatedRevenue) * 100 : 0,
+    bracketNumber: bracket.bracket,
+    appliedAnexo: effectiveAnexo,
+    icmsIssTotalInDas: hibridoIcmsInDas + hibridoIssInDas,
+    icmsIssSharePct: dasHibridoAmount > 0 ? ((hibridoIcmsInDas + hibridoIssInDas) / dasHibridoAmount) * 100 : 0,
+    transitionYear: transitionFactors.yearNumber,
+    icmsIssTransitionFactor,
   };
 
   // Saldo a recolher IBS/CBS
   const ibsCbsNetPayable = Math.max(0, ibsCbsGrossDebit - ibsCbsEligibleCredits) + selectiveTaxAmount;
+
+  const cbsGrossDebit = ibsCbsGrossDebit * cbsRatio;
+  const ibsGrossDebit = ibsCbsGrossDebit * ibsRatio;
+  const cbsEligibleCredits = ibsCbsEligibleCredits * cbsRatio;
+  const ibsEligibleCredits = ibsCbsEligibleCredits * ibsRatio;
+  const cbsNetPayable = Math.max(0, cbsGrossDebit - cbsEligibleCredits);
+  const ibsNetPayable = Math.max(0, ibsGrossDebit - ibsEligibleCredits);
+  const effectiveNetRatePct = totalCalculatedRevenue > 0 ? (ibsCbsNetPayable / totalCalculatedRevenue) * 100 : 0;
 
   // Economia pela redução da alíquota de medicamentos/saúde ou rateio
   const standardIbsCbsDebit = totalCalculatedRevenue * standardIbsCbsRate;
@@ -1155,8 +1222,18 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
       cbsRateApplied: effectiveCbsRate,
       ibsRateApplied: effectiveIbsRate,
       grossDebit: ibsCbsGrossDebit,
+      cbsGrossDebit,
+      ibsGrossDebit,
       eligibleCredits: ibsCbsEligibleCredits,
+      cbsEligibleCredits,
+      ibsEligibleCredits,
       netPayable: ibsCbsNetPayable,
+      cbsNetPayable,
+      ibsNetPayable,
+      effectiveNetRatePct,
+      nominalCbsRatePct,
+      nominalIbsRatePct,
+      nominalTotalRatePct,
       creditTransferredToB2B: b2bCreditTransferredHibrido,
       creditTransferRate: effectiveAppliedSalesIbsCbsRate,
       selectiveTaxAmount,
@@ -1313,8 +1390,18 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
       cbsRateApplied: effectiveCbsRate,
       ibsRateApplied: effectiveIbsRate,
       grossDebit: ibsCbsGrossDebit,
+      cbsGrossDebit,
+      ibsGrossDebit,
       eligibleCredits: ibsCbsEligibleCredits,
+      cbsEligibleCredits,
+      ibsEligibleCredits,
       netPayable: ibsCbsPresumidoNet,
+      cbsNetPayable,
+      ibsNetPayable,
+      effectiveNetRatePct: totalCalculatedRevenue > 0 ? (ibsCbsPresumidoNet / totalCalculatedRevenue) * 100 : 0,
+      nominalCbsRatePct,
+      nominalIbsRatePct,
+      nominalTotalRatePct,
       creditTransferredToB2B: b2bRevenue * effectiveAppliedSalesIbsCbsRate,
       creditTransferRate: effectiveAppliedSalesIbsCbsRate,
       selectiveTaxAmount,
@@ -1465,8 +1552,18 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
       cbsRateApplied: effectiveCbsRate,
       ibsRateApplied: effectiveIbsRate,
       grossDebit: ibsCbsGrossDebit,
+      cbsGrossDebit,
+      ibsGrossDebit,
       eligibleCredits: ibsCbsEligibleCredits,
+      cbsEligibleCredits,
+      ibsEligibleCredits,
       netPayable: ibsCbsPresumidoNet,
+      cbsNetPayable,
+      ibsNetPayable,
+      effectiveNetRatePct: totalCalculatedRevenue > 0 ? (ibsCbsPresumidoNet / totalCalculatedRevenue) * 100 : 0,
+      nominalCbsRatePct,
+      nominalIbsRatePct,
+      nominalTotalRatePct,
       creditTransferredToB2B: b2bRevenue * effectiveAppliedSalesIbsCbsRate,
       creditTransferRate: effectiveAppliedSalesIbsCbsRate,
       selectiveTaxAmount,
@@ -1689,14 +1786,23 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
     substitutionRows,
     monofasicoStAnalysis: {
       currentSystemDesc: hasMonofasicoOrSt
-        ? `No sistema atual (LC 123/2006), sua empresa segrega ${monofasicoPisCofinsPercentage}% da receita monofásica de PIS/COFINS e ${icmsStPercentage}% de ICMS-ST no PGDAS-D, gerando uma economia mensal de R$ ${(totalDeductedPisCofins + deductedIcms).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`
-        : 'No sistema atual, toda a receita é tributada nas faixas normais do Anexo sem segregação de monofásicos ou ST.',
-      newSystemDesc: `Na Reforma Tributária 2027 (Lei Complementar nº 214/2025 e EC 132/2023), PIS, COFINS e ICMS são extintos e substituídos pela CBS e pelo IBS. A lógica de "concentração monofásica" e "Substituição Tributária pré-fixada" é substituída pelo princípio do Crédito Financeiro Amplo: a cada elo da cadeia, quem compra toma crédito do imposto destacado na nota anterior e quem vende recolhe sobre o valor agregado.`,
+        ? isPreReform
+          ? `No sistema atual (LC 123/2006), sua empresa segrega ${monofasicoPisCofinsPercentage}% da receita monofásica de PIS/COFINS e ${icmsStPercentage}% de ICMS-ST no PGDAS-D, gerando uma dedução no DAS de R$ ${(totalDeductedPisCofins + deductedIcms).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês.`
+          : isCombustiveisSegment
+            ? `No setor de combustíveis, a LC 214/2025 mantém o regime monofásico nacional (alíquota ad rem unificada retida nas refinarias), desonerando o DAS na revenda.`
+            : `A partir de 2027 (LC 214/2025), o regime monofásico tradicional de PIS/COFINS foi extinto para ${businessSegment === 'farmacia' ? 'farmácias e medicamentos' : businessSegment === 'autopecas' ? 'autopeças e pneus' : businessSegment === 'bebidas' ? 'bebidas' : 'o comércio varejista/atacadista'}, não havendo mais segregação de PIS/COFINS no DAS.`
+        : 'Toda a receita é tributada nas faixas normais do Anexo sem segregação setorial.',
+      newSystemDesc: `Na Reforma Tributária 2027 (Lei Complementar nº 214/2025 e EC 132/2023), PIS, COFINS e ICMS são extintos e substituídos pela CBS e pelo IBS. A antiga monofasia é substituída por 4 grandes vantagens estruturais: 1) Crédito Pleno sobre 100% das compras no Simples Híbrido; 2) Alíquotas com 60% de redução (saúde/medicamentos); 3) Repasse integral de crédito aos clientes B2B; 4) Eliminação do ICMS-ST e das MVAs abusivas.`,
       keyTransitionTakeaways: [
-        'Fim da complexidade da Substituição Tributária (ICMS-ST) nos estados: o imposto passa a pertencer 100% ao estado/município de destino.',
-        'Extinção do PIS/COFINS Monofásico: a CBS é não-cumulativa plena (LC 214/2025), acabando com a necessidade de segregação manual de NCMs por alíquota zero.',
-        'Se optar pelo Simples Híbrido, a empresa pode tomar créditos de IBS/CBS sobre 100% das suas compras de mercadorias e insumos tributados.',
-        businessSegment === 'farmacia' ? 'Medicamentos contam com alíquota reduzida em 60% de CBS e IBS (Art. 9º da EC 132/23 e LC 214/2025).' : 'Empresas no Simples Simplificado continuam podendo recolher em guia única sem créditos amplos.',
+        'Extinção do PIS/COFINS Monofásico pela LC 214/2025: Fim da complexa segregação de NCMs por alíquota zero e do risco de autuações fiscais.',
+        'Crédito Amplo nas Entradas: No Simples Híbrido e regimes de Lucro, a empresa apropria 100% de crédito de CBS e IBS em todas as compras de mercadorias, insumos, fretes e energia.',
+        businessSegment === 'farmacia'
+          ? 'Medicamentos e Saúde: Redução de 60% na alíquota padrão de CBS e IBS (Art. 9º da EC 132/23 e LC 214/2025), com alíquota zero para medicamentos essenciais/câncer.'
+          : 'Competitividade B2B Máxima: Repasse de 100% de crédito de CBS/IBS aos clientes PJ (oficinas, frotistas e revendedores).',
+        'Fim da Substituição Tributária (ICMS-ST) e da MVA Abusiva: O IBS passa a ser devido no destino com crédito integral entre elos da cadeia.',
+        businessSegment === 'combustiveis'
+          ? 'Combustíveis: Único setor com regime monofásico preservado pela LC 214/2025 (alíquotas ad rem por litro).'
+          : 'Eliminação de Passivos Tributários: Apuração transparente e automatizada sem disputas de classificação cadastral.',
       ],
     },
   };
@@ -1721,9 +1827,11 @@ export function runFullTaxSimulation(input: CompanyInput, skipSchedule = false):
       monofasicoSavingsAnnual: segregationSavingsSimplificado.monofasicoPisCofinsAnnual,
       icmsStSavingsAnnual: segregationSavingsSimplificado.icmsStAnnual,
       legalNotice:
-        hasMonofasicoOrSt
-          ? `Economia de R$ ${totalSegregationSavingsAnnual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/ano garantida pela segregação legal de PIS/COFINS Monofásico (Leis 10.147/00, 10.485/02, 13.097/15) e ICMS-ST (Convênio 142/18) na forma do Art. 18, § 4º-A da LC 123/2006 e diretrizes da LC 214/2025.`
-          : 'Nenhuma segregação setorial aplicada. Revenda tributada integralmente.',
+        isCombustiveisSegment
+          ? `Combustíveis: Regime monofásico nacional (IBS/CBS ad rem) mantido expressamente pela LC 214/2025, garantindo exclusão de tributos de revenda na guia do DAS.`
+          : isPreReform
+            ? `Economia de R$ ${totalSegregationSavingsAnnual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/ano garantida pela segregação legal de PIS/COFINS Monofásico (Leis 10.147/00, 10.485/02, 13.097/15) e ICMS-ST (Convênio 142/18) na forma do Art. 18, § 4º-A da LC 123/2006.`
+            : `A partir de 2027 (LC 214/2025), a segregação de PIS/COFINS monofásico foi extinta para este setor. A empresa compensa com créditos não-cumulativos plenos de CBS/IBS nas compras (Simples Híbrido), redução de 60% de alíquota (saúde) e repasse de 100% de crédito B2B.`,
     },
     prePostComparison,
     transitionSchedule: !skipSchedule ? calculateYearlyTransitionSchedule(input) : [],
